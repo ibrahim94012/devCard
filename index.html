@@ -1,0 +1,1480 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DevCard — Portfolio Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<!-- ═══ FIREBASE ═══ -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, signInWithPopup, GoogleAuthProvider, FacebookAuthProvider, signOut, onAuthStateChanged }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getDatabase, ref, set, get, update, remove, push }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  /* ── PASTE YOUR FIREBASE CONFIG HERE ── */
+const firebaseConfig = {
+  apiKey: "AIzaSyA_vr4EXR57ap2CRxlS1JpK6wHqIwlU8Rc",
+  authDomain: "devcard-6b634.firebaseapp.com",
+  databaseURL: "https://devcard-6b634-default-rtdb.firebaseio.com",
+  projectId: "devcard-6b634",
+  storageBucket: "devcard-6b634.firebasestorage.app",
+  messagingSenderId: "754891867884",
+  appId: "1:754891867884:web:f6ff7e2f8d2fcf8ae147c9",
+  measurementId: "G-C3P4HVH0C0"
+};
+
+  const app  = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db   = getDatabase(app);
+
+  const googleProvider   = new GoogleAuthProvider();
+  const facebookProvider = new FacebookAuthProvider();
+
+  /* ── expose globals ── */
+  window.auth      = auth;
+  window.db        = db;
+  window.dbRef     = ref;
+  window.dbSet     = set;
+  window.dbGet     = get;
+  window.dbUpdate  = update;
+  window.dbRemove  = remove;
+  window.dbPush    = push;
+  window.currentUser    = null;
+  window.currentProfile = null;
+
+  /* ── AUTH STATE ── */
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      window.currentUser = user;
+      const snap = await get(ref(db, `users/${user.uid}`));
+      if (!snap.exists()) {
+        const profile = {
+          uid: user.uid, displayName: user.displayName || "Anonymous Dev",
+          email: user.email, photoURL: user.photoURL || "",
+          username: user.uid.substring(0, 10),
+          bio: "Full Stack Developer | Open Source Enthusiast",
+          location: "Bangladesh", website: "", profession: "Software Developer",
+          phone: "", github: "", linkedin: "", twitter: "",
+          facebook: "", instagram: "", youtube: "",
+          skills: ["JavaScript", "React", "Node.js"],
+          experience: [], education: [], projects: [], achievements: [],
+          joinedAt: Date.now(), isAdmin: false, isPublic: true,
+          verified: false, theme: "dark", accentColor: "#7fff6e",
+          profileViews: 0, followers: 0, following: 0,
+          status: "active", coverPhoto: "",
+          showEmail: false, showPhone: false, showViews: true,
+          notifFollow: true, notifView: false
+        };
+        await set(ref(db, `users/${user.uid}`), profile);
+        window.currentProfile = profile;
+      } else {
+        window.currentProfile = snap.val();
+        await update(ref(db, `users/${user.uid}`), { lastSeen: Date.now() });
+      }
+      updateUIForLoggedIn(user);
+      loadProfilePage(user.uid);
+    } else {
+      window.currentUser = null;
+      window.currentProfile = null;
+      updateUIForLoggedOut();
+      loadHeroPage();
+    }
+  });
+
+  /* ── AUTH ── */
+  window.loginGoogle = async () => {
+    try { showLoader("Signing in with Google…"); await signInWithPopup(auth, googleProvider); }
+    catch(e) { showToast("Login failed: " + e.message, "error"); hideLoader(); }
+  };
+  window.loginFacebook = async () => {
+    try { showLoader("Signing in with Facebook…"); await signInWithPopup(auth, facebookProvider); }
+    catch(e) { showToast("Login failed: " + e.message, "error"); hideLoader(); }
+  };
+  window.logout = async () => {
+    await signOut(auth);
+    showToast("Logged out successfully.", "success");
+  };
+
+  /* ── LOAD PROFILE ── */
+  window.loadProfilePage = async (uid) => {
+    const snap = await get(ref(db, `users/${uid}`));
+    if (!snap.exists()) { showToast("Profile not found.", "error"); hideLoader(); return; }
+    const p = snap.val();
+    window.currentProfile = p;
+    renderProfile(p, uid);
+    if (window.currentUser && window.currentUser.uid !== uid) {
+      await update(ref(db, `users/${uid}`), { profileViews: (p.profileViews || 0) + 1 });
+    }
+    hideLoader();
+  };
+
+  /* ── SAVE PROFILE ── */
+  window.saveProfile = async (data) => {
+    if (!window.currentUser) return;
+    try {
+      await update(ref(db, `users/${window.currentUser.uid}`), data);
+      window.currentProfile = { ...window.currentProfile, ...data };
+      showToast("Profile updated successfully ✓", "success");
+      loadProfilePage(window.currentUser.uid);
+      closeSettings();
+    } catch(e) { showToast("Save failed: " + e.message, "error"); }
+  };
+
+  /* ── ADMIN ── */
+  window.loadAdminPanel = async () => {
+    const snap = await get(ref(db, "users"));
+    if (!snap.exists()) { showToast("No users found.", "error"); hideLoader(); return; }
+    renderAdminPanel(snap.val());
+  };
+  window.adminToggleStatus = async (uid, cur) => {
+    const s = cur === "active" ? "banned" : "active";
+    await update(ref(db, `users/${uid}`), { status: s });
+    showToast(`User ${s === "active" ? "activated" : "banned"}.`, "success");
+    window.loadAdminPanel();
+  };
+  window.adminDeleteUser = async (uid) => {
+    if (!confirm("Permanently delete this user?")) return;
+    await remove(ref(db, `users/${uid}`));
+    showToast("User deleted.", "success");
+    window.loadAdminPanel();
+  };
+  window.adminToggleVerify = async (uid, cur) => {
+    await update(ref(db, `users/${uid}`), { verified: !cur });
+    showToast("Verification status updated.", "success");
+    window.loadAdminPanel();
+  };
+  window.adminMakeAdmin = async (uid, cur) => {
+    await update(ref(db, `users/${uid}`), { isAdmin: !cur });
+    showToast("Admin status updated.", "success");
+    window.loadAdminPanel();
+  };
+</script>
+
+<style>
+/* ════════════════════════════════
+   CSS VARIABLES
+════════════════════════════════ */
+:root {
+  --bg:#0a0a0f; --bg2:#0f0f1a; --bg3:#13131f;
+  --panel:#16161f; --panel2:#1c1c28;
+  --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.13);
+  --accent:#7fff6e; --accent2:#4ef0c0; --accent3:#ff6eb4;
+  --accent-glow:rgba(127,255,110,0.14);
+  --text:#e8e8f0; --text2:#8888a8; --text3:#3e3e5a;
+  --success:#7fff6e; --error:#ff4e6a; --warn:#ffd700;
+  --shadow:rgba(0,0,0,0.55);
+  --r:16px; --r-sm:10px;
+}
+[data-theme="light"] {
+  --bg:#f0f0f5; --bg2:#e8e8f0; --bg3:#dcdce8;
+  --panel:#ffffff; --panel2:#f5f5fa;
+  --border:rgba(0,0,0,0.07); --border2:rgba(0,0,0,0.13);
+  --accent:#2a8f00; --accent2:#0a7a5c; --accent3:#c2185b;
+  --accent-glow:rgba(42,143,0,0.11);
+  --text:#1a1a2e; --text2:#5a5a7a; --text3:#aaaabc;
+  --shadow:rgba(0,0,0,0.10);
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden;transition:background .3s,color .3s;}
+
+/* scrollbar */
+::-webkit-scrollbar{width:5px;} ::-webkit-scrollbar-track{background:var(--bg2);}
+::-webkit-scrollbar-thumb{background:var(--text3);border-radius:3px;}
+::-webkit-scrollbar-thumb:hover{background:var(--accent);}
+
+/* ── BG EFFECTS ── */
+.bg-grid{position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:linear-gradient(rgba(127,255,110,.018) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(127,255,110,.018) 1px,transparent 1px);
+  background-size:48px 48px;animation:gridPan 40s linear infinite;}
+[data-theme="light"] .bg-grid{opacity:.5;}
+@keyframes gridPan{to{background-position:48px 48px;}}
+.bg-glow{position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 60% 45% at 8% 8%,rgba(127,255,110,.045) 0%,transparent 70%),
+             radial-gradient(ellipse 50% 40% at 92% 92%,rgba(78,240,192,.04) 0%,transparent 70%);}
+
+/* ── CUSTOM CURSOR ── */
+#cur{position:fixed;width:9px;height:9px;background:var(--accent);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);mix-blend-mode:screen;}
+#cur-ring{position:fixed;width:30px;height:30px;border:1.5px solid var(--accent);border-radius:50%;opacity:.35;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);}
+
+/* ── NAVBAR ── */
+.navbar{position:sticky;top:0;z-index:1000;height:62px;padding:0 1.5rem;
+  display:flex;align-items:center;justify-content:space-between;
+  background:rgba(10,10,15,.88);backdrop-filter:blur(22px);
+  border-bottom:1px solid var(--border);}
+[data-theme="light"] .navbar{background:rgba(240,240,245,.88);}
+.nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none;cursor:pointer;}
+.nav-logo-text{font-family:'Syne',sans-serif;font-size:1.35rem;font-weight:800;color:var(--text);}
+.nav-logo-text span{color:var(--accent);}
+.nav-badge{font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--text3);border:1px solid var(--border2);border-radius:4px;padding:2px 7px;}
+.nav-right{display:flex;align-items:center;gap:8px;}
+
+/* icon button */
+.ibtn{width:36px;height:36px;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--panel);
+  color:var(--text2);cursor:pointer;transition:all .2s;font-size:.85rem;flex-shrink:0;}
+.ibtn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-glow);}
+
+/* pill button */
+.pbtn{display:flex;align-items:center;gap:7px;padding:7px 16px;border-radius:100px;
+  border:1px solid var(--border2);background:var(--panel);color:var(--text2);cursor:pointer;
+  transition:all .2s;font-family:'Space Mono',monospace;font-size:.63rem;
+  letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;}
+.pbtn:hover{border-color:var(--accent);color:var(--accent);}
+
+/* primary button */
+.prim{display:flex;align-items:center;gap:7px;padding:8px 20px;border-radius:100px;
+  border:none;background:var(--accent);color:#051200;cursor:pointer;transition:all .2s;
+  font-family:'Space Mono',monospace;font-size:.63rem;font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;}
+[data-theme="light"] .prim{color:#fff;}
+.prim:hover{opacity:.85;transform:translateY(-1px);box-shadow:0 5px 22px var(--accent-glow);}
+
+/* danger button */
+.dbtn{display:flex;align-items:center;gap:7px;padding:7px 16px;border-radius:100px;
+  border:1px solid rgba(255,78,106,.3);background:rgba(255,78,106,.08);
+  color:var(--error);cursor:pointer;transition:all .2s;
+  font-family:'Space Mono',monospace;font-size:.63rem;letter-spacing:.06em;text-transform:uppercase;}
+.dbtn:hover{background:rgba(255,78,106,.15);border-color:var(--error);}
+
+/* ── USER DROPDOWN ── */
+.user-menu{position:relative;}
+.av-trigger{display:flex;align-items:center;gap:9px;padding:4px 12px 4px 4px;
+  border-radius:100px;border:1px solid var(--border2);background:var(--panel);cursor:pointer;transition:all .2s;}
+.av-trigger:hover{border-color:var(--accent);}
+.av-trigger img{width:28px;height:28px;border-radius:50%;object-fit:cover;border:2px solid var(--accent);}
+.av-trigger .uname{font-family:'Space Mono',monospace;font-size:.6rem;color:var(--text2);
+  max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.av-trigger .chev{font-size:.55rem;color:var(--text3);transition:transform .2s;}
+.user-menu.open .chev{transform:rotate(180deg);}
+.dd{position:absolute;top:calc(100% + 10px);right:0;width:220px;
+  background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);
+  padding:8px;z-index:999;box-shadow:0 18px 52px var(--shadow);display:none;animation:fadeD .2s ease;}
+.user-menu.open .dd{display:block;}
+@keyframes fadeD{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:none;}}
+.dd-head{padding:10px 12px 12px;border-bottom:1px solid var(--border);margin-bottom:6px;}
+.dd-head img{width:42px;height:42px;border-radius:50%;object-fit:cover;border:2px solid var(--accent);}
+.dd-head-name{font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;margin-top:7px;}
+.dd-head-email{font-family:'Space Mono',monospace;font-size:.54rem;color:var(--text3);margin-top:2px;}
+.dd-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;
+  font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--text2);cursor:pointer;transition:all .15s;border:none;background:transparent;width:100%;text-align:left;}
+.dd-item i{width:14px;text-align:center;font-size:.78rem;}
+.dd-item:hover{background:var(--panel2);color:var(--text);}
+.dd-item.red:hover{background:rgba(255,78,106,.1);color:var(--error);}
+.dd-sep{height:1px;background:var(--border);margin:4px 0;}
+
+/* ── MAIN ── */
+.app{position:relative;z-index:1;min-height:calc(100vh - 62px);}
+
+/* ── HERO PAGE ── */
+.hero{min-height:calc(100vh - 62px);display:flex;align-items:center;
+  justify-content:center;flex-direction:column;text-align:center;padding:2rem 1.5rem;}
+.hero-eyebrow{font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.22em;
+  text-transform:uppercase;color:var(--accent);margin-bottom:1.2rem;
+  display:flex;align-items:center;gap:10px;}
+.hero-eyebrow::before,.hero-eyebrow::after{content:'';display:inline-block;width:28px;height:1px;background:var(--accent);}
+.hero-title{font-family:'Syne',sans-serif;font-size:clamp(2.4rem,7vw,5rem);
+  font-weight:800;line-height:1.0;color:var(--text);margin-bottom:1rem;}
+.hero-title .hl{color:var(--accent);text-shadow:0 0 42px rgba(127,255,110,.28);}
+.hero-sub{font-size:1rem;color:var(--text2);max-width:460px;margin:0 auto 2rem;line-height:1.65;}
+.hero-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:3.5rem;}
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;max-width:720px;}
+@media(max-width:600px){.feat-grid{grid-template-columns:1fr;}}
+.feat-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r-sm);
+  padding:1.25rem;text-align:left;transition:border-color .2s,transform .2s;}
+.feat-card:hover{border-color:var(--accent);transform:translateY(-3px);}
+.feat-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+  background:var(--accent-glow);border:1px solid rgba(127,255,110,.2);
+  color:var(--accent);font-size:1rem;margin-bottom:12px;}
+.feat-title{font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;margin-bottom:5px;}
+.feat-desc{font-size:.78rem;color:var(--text2);line-height:1.45;}
+
+/* ── COVER + PROFILE HEADER ── */
+.cover-wrap{position:relative;}
+.cover-bg{width:100%;height:260px;display:block;object-fit:cover;
+  background:linear-gradient(135deg,#13131f 0%,#1c1c28 55%,#0a0a0f 100%);}
+.cover-pattern{position:absolute;inset:0;
+  background:radial-gradient(circle at 18% 50%,rgba(127,255,110,.06) 0%,transparent 50%),
+             radial-gradient(circle at 82% 25%,rgba(78,240,192,.06) 0%,transparent 50%),
+             linear-gradient(rgba(127,255,110,.012) 1px,transparent 1px),
+             linear-gradient(90deg,rgba(127,255,110,.012) 1px,transparent 1px);
+  background-size:auto,auto,32px 32px,32px 32px;}
+.cover-overlay{position:absolute;inset:0;
+  background:linear-gradient(to bottom,transparent 40%,rgba(10,10,15,.88) 100%);}
+[data-theme="light"] .cover-overlay{background:linear-gradient(to bottom,transparent 40%,rgba(240,240,245,.88) 100%);}
+
+/* ── PROFILE CONTAINER ── */
+.profile-wrap{max-width:1020px;margin:0 auto;padding:0 1rem 4rem;}
+.profile-header{background:var(--panel);border:1px solid var(--border2);
+  border-radius:0 0 var(--r) var(--r);padding:0 1.5rem 1.5rem;margin-bottom:1.5rem;}
+.av-wrap{position:relative;margin-top:-52px;display:inline-block;}
+.prof-av{width:104px;height:104px;border-radius:50%;object-fit:cover;
+  border:4px solid var(--panel);box-shadow:0 0 0 2.5px var(--accent),0 8px 32px var(--shadow);}
+.verified-dot{position:absolute;bottom:4px;right:4px;width:24px;height:24px;
+  border-radius:50%;background:var(--accent);color:#051200;
+  display:flex;align-items:center;justify-content:center;font-size:.65rem;border:2.5px solid var(--panel);}
+.prof-top{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;}
+.prof-info{flex:1;min-width:200px;}
+.prof-name{font-family:'Syne',sans-serif;font-size:1.65rem;font-weight:800;
+  line-height:1.1;color:var(--text);display:flex;align-items:center;gap:9px;flex-wrap:wrap;}
+.prof-handle{font-family:'Space Mono',monospace;font-size:.68rem;color:var(--text3);margin-top:3px;}
+.prof-handle span{color:var(--accent);}
+.prof-bio{font-size:.92rem;color:var(--text2);margin:9px 0;line-height:1.55;max-width:520px;}
+.prof-meta{display:flex;flex-wrap:wrap;gap:14px;margin-top:8px;}
+.meta-chip{display:flex;align-items:center;gap:6px;font-family:'Space Mono',monospace;
+  font-size:.6rem;color:var(--text3);text-decoration:none;}
+.meta-chip i{color:var(--accent);width:12px;text-align:center;}
+.meta-chip:hover{color:var(--text2);}
+.prof-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding-top:4px;}
+
+/* social icons */
+.socials{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+.soc-link{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--border2);background:var(--panel2);color:var(--text2);text-decoration:none;
+  font-size:.82rem;transition:all .2s;}
+.soc-link:hover{transform:translateY(-3px);box-shadow:0 4px 14px var(--shadow);}
+.soc-link.gh:hover{border-color:#fff;color:#fff;}
+.soc-link.li:hover{border-color:#0077b5;color:#0077b5;}
+.soc-link.tw:hover{border-color:#1da1f2;color:#1da1f2;}
+.soc-link.fb:hover{border-color:#1877f2;color:#1877f2;}
+.soc-link.ig:hover{border-color:#e1306c;color:#e1306c;}
+.soc-link.yt:hover{border-color:#ff0000;color:#ff0000;}
+.soc-link.wb:hover{border-color:var(--accent);color:var(--accent);}
+
+/* stats bar */
+.stats-bar{display:flex;gap:2rem;margin-top:1rem;padding-top:1rem;
+  border-top:1px solid var(--border);flex-wrap:wrap;}
+.stat-item{display:flex;flex-direction:column;align-items:center;cursor:default;}
+.stat-val{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:700;color:var(--accent);}
+.stat-lbl{font-family:'Space Mono',monospace;font-size:.54rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);}
+
+/* URL bar */
+.url-bar{display:flex;align-items:center;gap:8px;background:var(--bg2);
+  border:1px solid var(--border2);border-radius:100px;padding:7px 16px;
+  font-family:'Space Mono',monospace;font-size:.58rem;color:var(--text3);
+  margin-top:10px;flex-wrap:wrap;}
+.url-bar i{color:var(--accent);}
+.url-bar span{color:var(--accent2);word-break:break-all;}
+.copy-btn{padding:3px 11px;border-radius:100px;background:var(--accent-glow);
+  border:1px solid rgba(127,255,110,.22);color:var(--accent);font-family:'Space Mono',monospace;
+  font-size:.54rem;cursor:pointer;transition:all .2s;white-space:nowrap;}
+.copy-btn:hover{background:var(--accent);color:#051200;}
+
+/* ── CONTENT GRID ── */
+.content-grid{display:grid;grid-template-columns:1fr 2fr;gap:1.25rem;}
+@media(max-width:700px){.content-grid{grid-template-columns:1fr;}}
+
+/* ── CARD ── */
+.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);
+  padding:1.3rem;margin-bottom:1.25rem;transition:border-color .25s;}
+.card:hover{border-color:var(--border2);}
+.card-hd{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;
+  color:var(--text);margin-bottom:1rem;display:flex;align-items:center;gap:9px;}
+.card-hd i{color:var(--accent);font-size:.88rem;width:16px;text-align:center;}
+
+/* ── SKILLS ── */
+.skill-wrap{display:flex;flex-wrap:wrap;gap:6px;}
+.skill-tag{font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;
+  padding:5px 13px;border-radius:100px;border:1px solid var(--border2);
+  background:var(--panel2);color:var(--text2);transition:all .2s;cursor:default;}
+.skill-tag:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-glow);}
+
+/* ── TIMELINE ── */
+.timeline{position:relative;padding-left:22px;}
+.timeline::before{content:'';position:absolute;left:6px;top:5px;bottom:5px;
+  width:1px;background:var(--border2);}
+.tl-item{position:relative;margin-bottom:1.3rem;}
+.tl-item:last-child{margin-bottom:0;}
+.tl-item::before{content:'';position:absolute;left:-19px;top:5px;
+  width:9px;height:9px;border-radius:50%;
+  background:var(--accent);border:2px solid var(--panel);box-shadow:0 0 8px var(--accent);}
+.tl-title{font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;}
+.tl-sub{font-size:.8rem;color:var(--text2);margin-top:2px;display:flex;align-items:center;gap:5px;}
+.tl-sub i{font-size:.7rem;color:var(--accent);}
+.tl-date{font-family:'Space Mono',monospace;font-size:.57rem;color:var(--text3);margin-top:4px;display:flex;align-items:center;gap:5px;}
+.tl-date i{font-size:.65rem;}
+.tl-desc{font-size:.8rem;color:var(--text2);margin-top:6px;line-height:1.5;}
+
+/* ── PROJECT GRID ── */
+.proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:1rem;}
+.proj-card{background:var(--panel2);border:1px solid var(--border);border-radius:var(--r-sm);
+  padding:1.1rem;transition:all .22s;cursor:pointer;}
+.proj-card:hover{border-color:var(--accent);transform:translateY(-3px);box-shadow:0 10px 32px var(--shadow);}
+.proj-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+  background:var(--accent-glow);border:1px solid rgba(127,255,110,.2);color:var(--accent);
+  font-size:1.1rem;margin-bottom:10px;}
+.proj-title{font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;margin-bottom:5px;}
+.proj-desc{font-size:.77rem;color:var(--text2);line-height:1.4;margin-bottom:10px;}
+.proj-tags{display:flex;flex-wrap:wrap;gap:4px;}
+.proj-tag{font-family:'Space Mono',monospace;font-size:.53rem;padding:3px 9px;border-radius:100px;
+  background:var(--accent-glow);color:var(--accent);border:1px solid rgba(127,255,110,.18);}
+.proj-link{margin-top:10px;display:flex;align-items:center;gap:5px;font-family:'Space Mono',monospace;
+  font-size:.58rem;color:var(--text3);letter-spacing:.04em;text-transform:uppercase;transition:color .2s;}
+.proj-link:hover{color:var(--accent);}
+
+/* ── QR ── */
+.qr-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;}
+#qr-mini canvas,#qr-mini img{border-radius:10px;border:1px solid var(--border2);}
+.qr-url{font-family:'Space Mono',monospace;font-size:.56rem;color:var(--text3);word-break:break-all;text-align:center;}
+
+/* ── ACHIEVEMENTS ── */
+.ach-wrap{display:flex;flex-wrap:wrap;gap:7px;}
+.ach-badge{display:flex;align-items:center;gap:6px;padding:5px 13px;border-radius:100px;
+  background:var(--panel2);border:1px solid var(--border2);
+  font-family:'Space Mono',monospace;font-size:.58rem;color:var(--text2);transition:all .2s;}
+.ach-badge i{color:var(--warn);font-size:.72rem;}
+.ach-badge:hover{border-color:var(--accent);color:var(--accent);}
+
+/* ── ACTIVITY ── */
+.act-item{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
+.act-item:last-child{border-bottom:none;}
+.act-icon{width:34px;height:34px;border-radius:50%;flex-shrink:0;
+  background:var(--accent-glow);border:1px solid rgba(127,255,110,.2);
+  color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:.78rem;}
+.act-text{font-size:.82rem;color:var(--text2);line-height:1.45;}
+.act-time{font-family:'Space Mono',monospace;font-size:.55rem;color:var(--text3);margin-top:3px;}
+
+/* ── MODALS ── */
+.overlay{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.75);
+  backdrop-filter:blur(10px);display:none;align-items:center;justify-content:center;padding:1rem;}
+.overlay.open{display:flex;}
+.modal{background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);
+  padding:1.75rem;width:100%;max-width:580px;max-height:90vh;overflow-y:auto;
+  animation:mIn .25s ease;position:relative;}
+@keyframes mIn{from{opacity:0;transform:translateY(22px) scale(.97);}to{opacity:1;transform:none;}}
+.modal-x{position:absolute;top:1.1rem;right:1.1rem;width:32px;height:32px;border-radius:50%;
+  border:1px solid var(--border2);background:var(--panel2);color:var(--text2);cursor:pointer;
+  font-size:.9rem;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.modal-x:hover{border-color:var(--error);color:var(--error);}
+.modal-title{font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:800;
+  color:var(--text);margin-bottom:1.4rem;}
+.modal-title span{color:var(--accent);}
+
+/* ── TABS ── */
+.tab-bar{display:flex;gap:4px;background:var(--panel);border:1px solid var(--border);
+  border-radius:100px;padding:4px;margin-bottom:1.25rem;flex-wrap:wrap;}
+.tab-btn{font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.07em;text-transform:uppercase;
+  padding:7px 15px;border-radius:100px;border:none;background:transparent;
+  color:var(--text2);cursor:pointer;transition:all .2s;flex:1;white-space:nowrap;}
+.tab-btn:hover{background:var(--panel2);color:var(--text);}
+.tab-btn.active{background:var(--accent);color:#051200;font-weight:700;}
+[data-theme="light"] .tab-btn.active{color:#fff;}
+
+/* ── FORMS ── */
+.fg{margin-bottom:1rem;}
+.flabel{display:block;font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--text3);margin-bottom:6px;display:flex;align-items:center;gap:6px;}
+.flabel i{color:var(--accent);width:12px;text-align:center;}
+.finput,.ftarea,.fsel{width:100%;padding:10px 14px;background:var(--bg2);border:1px solid var(--border2);
+  border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.88rem;
+  transition:border-color .2s,box-shadow .2s;outline:none;}
+.finput:focus,.ftarea:focus,.fsel:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow);}
+.ftarea{resize:vertical;min-height:80px;}
+.fsel{cursor:pointer;}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+@media(max-width:500px){.frow{grid-template-columns:1fr;}}
+.fsec{font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);margin:1.3rem 0 .75rem;padding-bottom:.5rem;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:8px;}
+.fsec i{width:14px;text-align:center;}
+
+/* ── TOGGLE ── */
+.tog-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);}
+.tog-row:last-child{border-bottom:none;}
+.tog-info{display:flex;flex-direction:column;gap:2px;}
+.tog-label{font-size:.85rem;color:var(--text);}
+.tog-desc{font-size:.74rem;color:var(--text3);}
+.tog{position:relative;width:46px;height:25px;cursor:pointer;flex-shrink:0;}
+.tog input{opacity:0;width:0;height:0;}
+.tog-sl{position:absolute;inset:0;background:var(--panel2);border-radius:100px;
+  border:1px solid var(--border2);transition:all .2s;}
+.tog-sl::before{content:'';position:absolute;width:17px;height:17px;border-radius:50%;
+  background:var(--text3);top:3px;left:3px;transition:all .2s;}
+.tog input:checked+.tog-sl{background:var(--accent);border-color:var(--accent);}
+.tog input:checked+.tog-sl::before{transform:translateX(21px);background:#051200;}
+
+/* ── COLOR SWATCHES ── */
+.swatches{display:flex;gap:9px;flex-wrap:wrap;margin-top:8px;}
+.sw{width:28px;height:28px;border-radius:50%;cursor:pointer;transition:transform .2s;border:2.5px solid transparent;}
+.sw:hover{transform:scale(1.2);}
+.sw.sel{border-color:var(--text);transform:scale(1.2);}
+
+/* ── LOGIN MODAL ── */
+.login-card{max-width:380px;text-align:center;}
+.login-icon-wrap{width:64px;height:64px;border-radius:20px;margin:0 auto 1rem;
+  background:var(--accent-glow);border:1px solid rgba(127,255,110,.25);
+  display:flex;align-items:center;justify-content:center;font-size:1.8rem;color:var(--accent);}
+.login-btn{width:100%;padding:12px 20px;border-radius:100px;border:1px solid var(--border2);
+  background:var(--panel2);color:var(--text);cursor:pointer;transition:all .2s;
+  font-family:'Space Mono',monospace;font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;
+  display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:.75rem;}
+.login-btn:hover{background:var(--panel);border-color:var(--border2);}
+.login-btn.google:hover{border-color:#4285f4;color:#4285f4;}
+.login-btn.facebook:hover{border-color:#1877f2;color:#1877f2;}
+.login-note{font-family:'Space Mono',monospace;font-size:.54rem;color:var(--text3);
+  margin-top:1rem;line-height:1.6;}
+.login-note a{color:var(--accent);text-decoration:none;}
+
+/* ── TOAST ── */
+.tc{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;}
+.toast{display:flex;align-items:center;gap:10px;padding:11px 18px;border-radius:100px;
+  background:var(--panel);border:1px solid var(--border2);
+  font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.04em;color:var(--text);
+  box-shadow:0 8px 32px var(--shadow);animation:tIn .3s ease;max-width:320px;}
+@keyframes tIn{from{opacity:0;transform:translateX(18px);}to{opacity:1;transform:none;}}
+.toast.success{border-color:var(--success);}
+.toast.error{border-color:var(--error);}
+.toast i.success-i{color:var(--success);}
+.toast i.error-i{color:var(--error);}
+.toast i.info-i{color:var(--accent2);}
+
+/* ── LOADER ── */
+.ldr{position:fixed;inset:0;z-index:3000;background:rgba(10,10,15,.88);
+  backdrop-filter:blur(10px);display:none;align-items:center;justify-content:center;
+  flex-direction:column;gap:16px;}
+.ldr.open{display:flex;}
+.ldr-ring{width:50px;height:50px;border-radius:50%;border:3px solid var(--border2);
+  border-top-color:var(--accent);animation:spin .75s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.ldr-text{font-family:'Space Mono',monospace;font-size:.62rem;color:var(--text2);
+  letter-spacing:.1em;text-transform:uppercase;}
+
+/* ── ADMIN ── */
+.admin-wrap{max-width:1020px;margin:0 auto;padding:2rem 1rem 4rem;}
+.admin-hd{font-family:'Syne',sans-serif;font-size:1.8rem;font-weight:800;margin-bottom:.4rem;}
+.admin-hd span{color:var(--accent3);}
+.admin-sub{font-family:'Space Mono',monospace;font-size:.6rem;color:var(--text3);
+  letter-spacing:.08em;text-transform:uppercase;margin-bottom:1.5rem;}
+.admin-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;margin-bottom:1.5rem;}
+.admin-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r-sm);
+  padding:1.1rem 1.3rem;position:relative;overflow:hidden;}
+.admin-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent);}
+.admin-card-val{font-family:'Syne',sans-serif;font-size:1.7rem;font-weight:700;color:var(--accent);}
+.admin-card-lbl{font-family:'Space Mono',monospace;font-size:.54rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-top:2px;}
+.admin-card-icon{position:absolute;right:14px;top:50%;transform:translateY(-50%);
+  font-size:1.5rem;color:var(--text3);opacity:.4;}
+.admin-table-wrap{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
+.admin-top{padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.admin-srch{flex:1;display:flex;align-items:center;gap:8px;
+  background:var(--bg2);border:1px solid var(--border2);border-radius:100px;padding:7px 14px;}
+.admin-srch i{color:var(--text3);font-size:.8rem;}
+.admin-srch input{flex:1;background:transparent;border:none;outline:none;
+  color:var(--text);font-family:'DM Sans',sans-serif;font-size:.84rem;}
+.admin-table{width:100%;border-collapse:collapse;}
+.admin-table th{font-family:'Space Mono',monospace;font-size:.54rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--text3);padding:10px 16px;text-align:left;
+  border-bottom:1px solid var(--border);background:var(--bg2);}
+.admin-table td{padding:11px 16px;border-bottom:1px solid var(--border);font-size:.84rem;vertical-align:middle;}
+.admin-table tr:hover td{background:var(--panel2);}
+.admin-table tr:last-child td{border-bottom:none;}
+.sbadge{font-family:'Space Mono',monospace;font-size:.53rem;padding:3px 10px;
+  border-radius:100px;text-transform:uppercase;letter-spacing:.06em;}
+.sbadge.active{background:rgba(127,255,110,.1);color:var(--accent);border:1px solid rgba(127,255,110,.22);}
+.sbadge.banned{background:rgba(255,78,106,.1);color:var(--error);border:1px solid rgba(255,78,106,.22);}
+.sbadge.admin-s{background:rgba(255,215,0,.1);color:var(--warn);border:1px solid rgba(255,215,0,.22);}
+.abtns{display:flex;gap:5px;flex-wrap:wrap;}
+.abtn{font-family:'Space Mono',monospace;font-size:.52rem;padding:4px 10px;border-radius:100px;
+  border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;
+  transition:all .15s;letter-spacing:.04em;text-transform:uppercase;display:flex;align-items:center;gap:4px;}
+.abtn:hover{background:var(--panel2);color:var(--text);}
+.abtn.ban:hover{border-color:var(--error);color:var(--error);}
+.abtn.vfy:hover{border-color:var(--accent);color:var(--accent);}
+.abtn.del:hover{border-color:var(--error);color:var(--error);background:rgba(255,78,106,.08);}
+.abtn.prom:hover{border-color:var(--warn);color:var(--warn);}
+
+/* ── FOOTER ── */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:1.75rem 1.5rem;position:relative;z-index:1;}
+.footer-in{max-width:1020px;margin:0 auto;display:flex;align-items:center;
+  justify-content:space-between;flex-wrap:wrap;gap:1rem;}
+.footer-logo{font-family:'Syne',sans-serif;font-size:1.05rem;font-weight:800;}
+.footer-logo span{color:var(--accent);}
+.footer-links{display:flex;gap:18px;flex-wrap:wrap;}
+.flink{font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--text3);cursor:pointer;transition:color .2s;text-decoration:none;}
+.flink:hover{color:var(--accent);}
+.admin-flink{display:flex;align-items:center;gap:6px;font-family:'Space Mono',monospace;
+  font-size:.58rem;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);
+  cursor:pointer;transition:all .2s;padding:6px 14px;border-radius:100px;border:1px dashed var(--border2);}
+.admin-flink:hover{color:var(--accent3);border-color:var(--accent3);}
+
+/* ── NOTICE BANNER ── */
+.notice{background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.22);
+  border-radius:var(--r-sm);padding:12px 16px;margin-bottom:1.25rem;
+  font-family:'Space Mono',monospace;font-size:.62rem;color:var(--warn);
+  display:flex;align-items:flex-start;gap:9px;line-height:1.5;}
+.notice i{margin-top:1px;flex-shrink:0;}
+.notice a{color:var(--accent);text-decoration:none;}
+.notice a:hover{text-decoration:underline;}
+
+/* ── EMPTY STATE ── */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:2rem;text-align:center;gap:8px;}
+.empty i{font-size:2rem;color:var(--text3);}
+.empty p{font-size:.82rem;color:var(--text3);}
+
+/* ── RESPONSIVE ── */
+@media(max-width:480px){
+  .cover-bg{height:180px;}
+  .prof-av{width:84px;height:84px;}
+  .prof-name{font-size:1.3rem;}
+  .navbar{padding:0 1rem;}
+  .modal{padding:1.25rem;}
+  .admin-table th,.admin-table td{padding:8px 10px;}
+  .stats-bar{gap:1.2rem;}
+}
+</style>
+</head>
+<body>
+
+<!-- Custom Cursor -->
+<div id="cur"></div>
+<div id="cur-ring"></div>
+
+<!-- BG -->
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+
+<!-- Toast -->
+<div class="tc" id="tc"></div>
+
+<!-- Loader -->
+<div class="ldr" id="ldr">
+  <div class="ldr-ring"></div>
+  <div class="ldr-text" id="ldr-txt">Loading…</div>
+</div>
+
+<!-- ═══════════ NAVBAR ═══════════ -->
+<nav class="navbar">
+  <div class="nav-logo" onclick="navigateHome()">
+    <span class="nav-logo-text">Dev<span>Card</span></span>
+    <span class="nav-badge">Portfolio</span>
+  </div>
+  <div class="nav-right">
+    <button class="ibtn" onclick="toggleTheme()" title="Toggle theme" id="theme-btn">
+      <i class="fas fa-moon" id="theme-icon"></i>
+    </button>
+
+    <!-- Logged out -->
+    <div id="nav-out" style="display:flex;gap:8px;align-items:center;">
+      <button class="pbtn" onclick="showLoginModal()">
+        <i class="fas fa-sign-in-alt"></i> Sign In
+      </button>
+      <button class="prim" onclick="showLoginModal()">
+        <i class="fas fa-rocket"></i> Get Started
+      </button>
+    </div>
+
+    <!-- Logged in -->
+    <div id="nav-in" style="display:none;">
+      <div class="user-menu" id="umenu">
+        <div class="av-trigger" onclick="toggleMenu()">
+          <img id="nav-av" src="" alt="avatar">
+          <span class="uname" id="nav-uname">User</span>
+          <i class="fas fa-chevron-down chev"></i>
+        </div>
+        <div class="dd">
+          <div class="dd-head">
+            <img id="dd-av" src="" alt="">
+            <div class="dd-head-name" id="dd-name">—</div>
+            <div class="dd-head-email" id="dd-email">—</div>
+          </div>
+          <button class="dd-item" onclick="goToMyProfile()">
+            <i class="fas fa-user"></i> My Profile
+          </button>
+          <button class="dd-item" onclick="openSettings()">
+            <i class="fas fa-cog"></i> Settings
+          </button>
+          <button class="dd-item" onclick="shareProfile()">
+            <i class="fas fa-share-nodes"></i> Share Profile
+          </button>
+          <button class="dd-item" onclick="showQRModal(myProfileUrl())">
+            <i class="fas fa-qrcode"></i> QR Code
+          </button>
+          <div class="dd-sep"></div>
+          <button class="dd-item red" onclick="logout()">
+            <i class="fas fa-right-from-bracket"></i> Sign Out
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══════════ MAIN ═══════════ -->
+<main class="app" id="main"></main>
+
+<!-- ═══════════ FOOTER ═══════════ -->
+<footer>
+  <div class="footer-in">
+    <div>
+      <div class="footer-logo">Dev<span>Card</span></div>
+      <div style="font-family:'Space Mono',monospace;font-size:.52rem;color:var(--text3);margin-top:3px;letter-spacing:.08em;">© 2025 · Built with Firebase</div>
+    </div>
+    <div class="footer-links">
+      <span class="flink" onclick="navigateHome()"><i class="fas fa-house" style="margin-right:4px;"></i>Home</span>
+      <span class="flink" onclick="showDemoProfile()"><i class="fas fa-eye" style="margin-right:4px;"></i>Demo</span>
+      <span class="flink"><i class="fas fa-shield-halved" style="margin-right:4px;"></i>Privacy</span>
+      <span class="flink"><i class="fas fa-envelope" style="margin-right:4px;"></i>Contact</span>
+    </div>
+    <button class="admin-flink" onclick="checkAdmin()">
+      <i class="fas fa-lock"></i> Admin Panel
+    </button>
+  </div>
+</footer>
+
+<!-- ═══════════ LOGIN MODAL ═══════════ -->
+<div class="overlay" id="login-modal">
+  <div class="modal login-card">
+    <button class="modal-x" onclick="closeLoginModal()"><i class="fas fa-xmark"></i></button>
+    <div class="login-icon-wrap"><i class="fas fa-bolt"></i></div>
+    <div class="modal-title" style="text-align:center;">Welcome to <span>DevCard</span></div>
+    <p style="font-size:.84rem;color:var(--text2);text-align:center;margin-bottom:1.75rem;line-height:1.55;">
+      Create your portfolio, share your work, and advance your career.
+    </p>
+    <button class="login-btn google" onclick="loginGoogle()">
+      <svg width="18" height="18" viewBox="0 0 18 18" style="flex-shrink:0;">
+        <path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 002.38-5.88c0-.57-.05-.66-.15-1.18z"/>
+        <path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 01-7.18-2.54H1.83v2.07A8 8 0 008.98 17z"/>
+        <path fill="#FBBC05" d="M4.5 10.52a4.8 4.8 0 010-3.04V5.41H1.83a8 8 0 000 7.18l2.67-2.07z"/>
+        <path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 001.83 5.4L4.5 7.49a4.77 4.77 0 014.48-3.31z"/>
+      </svg>
+      Continue with Google
+    </button>
+    <button class="login-btn facebook" onclick="loginFacebook()">
+      <i class="fab fa-facebook" style="color:#1877f2;font-size:1.05rem;flex-shrink:0;"></i>
+      Continue with Facebook
+    </button>
+    <p class="login-note">
+      By signing in you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
+    </p>
+  </div>
+</div>
+
+<!-- ═══════════ SETTINGS MODAL ═══════════ -->
+<div class="overlay" id="settings-modal">
+  <div class="modal">
+    <button class="modal-x" onclick="closeSettings()"><i class="fas fa-xmark"></i></button>
+    <div class="modal-title"><i class="fas fa-sliders" style="color:var(--accent);margin-right:8px;"></i>Settings & <span>Edit Profile</span></div>
+
+    <!-- tab bar -->
+    <div style="display:flex;gap:5px;overflow-x:auto;padding-bottom:4px;margin-bottom:1.25rem;" id="stab-wrap">
+      <button class="tab-btn active" id="stb-profile"    onclick="swTab('profile')"><i class="fas fa-user" style="margin-right:4px;"></i>Profile</button>
+      <button class="tab-btn"        id="stb-social"     onclick="swTab('social')"><i class="fab fa-share-nodes" style="margin-right:4px;"></i>Social</button>
+      <button class="tab-btn"        id="stb-skills"     onclick="swTab('skills')"><i class="fas fa-code" style="margin-right:4px;"></i>Skills</button>
+      <button class="tab-btn"        id="stb-work"       onclick="swTab('work')"><i class="fas fa-briefcase" style="margin-right:4px;"></i>Work</button>
+      <button class="tab-btn"        id="stb-projects"   onclick="swTab('projects')"><i class="fas fa-rocket" style="margin-right:4px;"></i>Projects</button>
+      <button class="tab-btn"        id="stb-appearance" onclick="swTab('appearance')"><i class="fas fa-palette" style="margin-right:4px;"></i>Theme</button>
+      <button class="tab-btn"        id="stb-privacy"    onclick="swTab('privacy')"><i class="fas fa-lock" style="margin-right:4px;"></i>Privacy</button>
+    </div>
+
+    <!-- Profile Tab -->
+    <div id="st-profile" class="stab">
+      <div class="frow">
+        <div class="fg"><label class="flabel"><i class="fas fa-user"></i>Full Name</label><input class="finput" id="s-name" placeholder="Your full name"></div>
+        <div class="fg"><label class="flabel"><i class="fas fa-briefcase"></i>Profession</label><input class="finput" id="s-profession" placeholder="e.g. Full Stack Developer"></div>
+      </div>
+      <div class="fg"><label class="flabel"><i class="fas fa-align-left"></i>Bio</label><textarea class="ftarea" id="s-bio" placeholder="Tell the world about yourself…"></textarea></div>
+      <div class="frow">
+        <div class="fg"><label class="flabel"><i class="fas fa-location-dot"></i>Location</label><input class="finput" id="s-location" placeholder="City, Country"></div>
+        <div class="fg"><label class="flabel"><i class="fas fa-phone"></i>Phone</label><input class="finput" id="s-phone" placeholder="+1 234 567 8900"></div>
+      </div>
+      <div class="fg"><label class="flabel"><i class="fas fa-globe"></i>Website</label><input class="finput" id="s-website" placeholder="https://yoursite.com"></div>
+      <div class="frow">
+        <div class="fg"><label class="flabel"><i class="fas fa-image"></i>Profile Photo URL</label><input class="finput" id="s-photo" placeholder="https://…/avatar.jpg"></div>
+        <div class="fg"><label class="flabel"><i class="fas fa-panorama"></i>Cover Photo URL</label><input class="finput" id="s-cover" placeholder="https://…/cover.jpg"></div>
+      </div>
+    </div>
+
+    <!-- Social Tab -->
+    <div id="st-social" class="stab" style="display:none;">
+      <div class="fg"><label class="flabel"><i class="fab fa-github"></i>GitHub</label><input class="finput" id="s-github" placeholder="username"></div>
+      <div class="fg"><label class="flabel"><i class="fab fa-linkedin-in"></i>LinkedIn</label><input class="finput" id="s-linkedin" placeholder="username"></div>
+      <div class="fg"><label class="flabel"><i class="fab fa-x-twitter"></i>Twitter / X</label><input class="finput" id="s-twitter" placeholder="username"></div>
+      <div class="fg"><label class="flabel"><i class="fab fa-facebook-f"></i>Facebook</label><input class="finput" id="s-facebook" placeholder="username or profile URL"></div>
+      <div class="fg"><label class="flabel"><i class="fab fa-instagram"></i>Instagram</label><input class="finput" id="s-instagram" placeholder="username"></div>
+      <div class="fg"><label class="flabel"><i class="fab fa-youtube"></i>YouTube</label><input class="finput" id="s-youtube" placeholder="channel URL or @handle"></div>
+    </div>
+
+    <!-- Skills Tab -->
+    <div id="st-skills" class="stab" style="display:none;">
+      <p style="font-size:.82rem;color:var(--text2);margin-bottom:.75rem;display:flex;align-items:center;gap:6px;">
+        <i class="fas fa-circle-info" style="color:var(--accent2);"></i>
+        Separate each skill with a comma. e.g. <code style="font-size:.78rem;color:var(--accent);">JavaScript, React, Docker</code>
+      </p>
+      <div class="fg"><label class="flabel"><i class="fas fa-code"></i>Skills</label>
+        <textarea class="ftarea" id="s-skills" style="min-height:120px;" placeholder="JavaScript, TypeScript, React, Node.js, Python, AWS, Docker…"></textarea>
+      </div>
+    </div>
+
+    <!-- Work Tab -->
+    <div id="st-work" class="stab" style="display:none;">
+      <p style="font-size:.82rem;color:var(--text2);margin-bottom:.75rem;display:flex;align-items:center;gap:6px;">
+        <i class="fas fa-circle-info" style="color:var(--accent2);"></i>
+        Use JSON array format. Each object: <code style="font-size:.78rem;color:var(--accent);">title, company, date, desc</code>
+      </p>
+      <div class="fg"><label class="flabel"><i class="fas fa-briefcase"></i>Work Experience (JSON)</label>
+        <textarea class="ftarea" id="s-experience" style="min-height:150px;font-family:'Space Mono',monospace;font-size:.7rem;"
+          placeholder='[{"title":"Frontend Developer","company":"TechCo","date":"2022–Present","desc":"Built React apps…"}]'></textarea>
+      </div>
+      <div class="fg"><label class="flabel"><i class="fas fa-graduation-cap"></i>Education (JSON)</label>
+        <textarea class="ftarea" id="s-education" style="min-height:120px;font-family:'Space Mono',monospace;font-size:.7rem;"
+          placeholder='[{"degree":"BSc Computer Science","institution":"MIT","date":"2018–2022","desc":"GPA 3.9"}]'></textarea>
+      </div>
+    </div>
+
+    <!-- Projects Tab -->
+    <div id="st-projects" class="stab" style="display:none;">
+      <p style="font-size:.82rem;color:var(--text2);margin-bottom:.75rem;display:flex;align-items:center;gap:6px;">
+        <i class="fas fa-circle-info" style="color:var(--accent2);"></i>
+        Each object: <code style="font-size:.78rem;color:var(--accent);">icon, title, desc, tags[], url</code>
+      </p>
+      <div class="fg"><label class="flabel"><i class="fas fa-rocket"></i>Projects (JSON)</label>
+        <textarea class="ftarea" id="s-projects" style="min-height:200px;font-family:'Space Mono',monospace;font-size:.7rem;"
+          placeholder='[{"icon":"rocket","title":"My App","desc":"What it does","tags":["React","Firebase"],"url":"https://…"}]'></textarea>
+      </div>
+      <p style="font-family:'Space Mono',monospace;font-size:.56rem;color:var(--text3);margin-top:.5rem;">
+        <i class="fas fa-info-circle" style="color:var(--accent2);"></i>
+        Use any <a href="https://fontawesome.com/icons" target="_blank" style="color:var(--accent);">Font Awesome icon name</a> for the <code>icon</code> field. e.g. "rocket", "code", "globe", "mobile-screen"
+      </p>
+    </div>
+
+    <!-- Appearance Tab -->
+    <div id="st-appearance" class="stab" style="display:none;">
+      <div class="fsec"><i class="fas fa-moon"></i>Color Mode</div>
+      <div class="fg"><label class="flabel"><i class="fas fa-circle-half-stroke"></i>Theme</label>
+        <select class="fsel" id="s-theme">
+          <option value="dark">🌙 Dark Mode</option>
+          <option value="light">☀️ Light Mode</option>
+        </select>
+      </div>
+      <div class="fsec"><i class="fas fa-droplet"></i>Accent Color</div>
+      <div class="swatches">
+        <div class="sw sel" style="background:#7fff6e;" onclick="pickAccent('#7fff6e',this)" title="Neon Green"></div>
+        <div class="sw" style="background:#4ef0c0;" onclick="pickAccent('#4ef0c0',this)" title="Teal"></div>
+        <div class="sw" style="background:#ff6eb4;" onclick="pickAccent('#ff6eb4',this)" title="Pink"></div>
+        <div class="sw" style="background:#ffd700;" onclick="pickAccent('#ffd700',this)" title="Gold"></div>
+        <div class="sw" style="background:#7eb8ff;" onclick="pickAccent('#7eb8ff',this)" title="Sky Blue"></div>
+        <div class="sw" style="background:#ff8c4a;" onclick="pickAccent('#ff8c4a',this)" title="Orange"></div>
+        <div class="sw" style="background:#c77dff;" onclick="pickAccent('#c77dff',this)" title="Purple"></div>
+        <div class="sw" style="background:#f72585;" onclick="pickAccent('#f72585',this)" title="Hot Pink"></div>
+      </div>
+    </div>
+
+    <!-- Privacy Tab -->
+    <div id="st-privacy" class="stab" style="display:none;">
+      <div class="fsec"><i class="fas fa-eye"></i>Visibility</div>
+      <div class="tog-row">
+        <div class="tog-info"><span class="tog-label">Public Profile</span><span class="tog-desc">Anyone can view your profile</span></div>
+        <label class="tog"><input type="checkbox" id="s-public" checked><span class="tog-sl"></span></label>
+      </div>
+      <div class="tog-row">
+        <div class="tog-info"><span class="tog-label">Show Email Address</span><span class="tog-desc">Display email on your profile</span></div>
+        <label class="tog"><input type="checkbox" id="s-show-email"><span class="tog-sl"></span></label>
+      </div>
+      <div class="tog-row">
+        <div class="tog-info"><span class="tog-label">Show Phone Number</span><span class="tog-desc">Display phone on your profile</span></div>
+        <label class="tog"><input type="checkbox" id="s-show-phone"><span class="tog-sl"></span></label>
+      </div>
+      <div class="tog-row">
+        <div class="tog-info"><span class="tog-label">Show Profile View Count</span><span class="tog-desc">Let visitors see how many times your profile was viewed</span></div>
+        <label class="tog"><input type="checkbox" id="s-show-views" checked><span class="tog-sl"></span></label>
+      </div>
+      <div class="fsec" style="margin-top:1rem;"><i class="fas fa-bell"></i>Notifications</div>
+      <div class="tog-row">
+        <div class="tog-info"><span class="tog-label">New Follower</span><span class="tog-desc">Notify when someone follows you</span></div>
+        <label class="tog"><input type="checkbox" id="s-notif-follow" checked><span class="tog-sl"></span></label>
+      </div>
+      <div class="tog-row">
+        <div class="tog-info"><span class="tog-label">Profile View Alert</span><span class="tog-desc">Notify when someone views your profile</span></div>
+        <label class="tog"><input type="checkbox" id="s-notif-view"><span class="tog-sl"></span></label>
+      </div>
+    </div>
+
+    <button class="prim" onclick="submitSettings()" style="width:100%;justify-content:center;padding:13px;margin-top:1.4rem;font-size:.72rem;">
+      <i class="fas fa-floppy-disk"></i> Save Changes
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════ SCRIPTS ═══════════ -->
+<script>
+/* ── CURSOR ── */
+const cur = document.getElementById('cur');
+const curR = document.getElementById('cur-ring');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove', e=>{mx=e.clientX;my=e.clientY;cur.style.left=mx+'px';cur.style.top=my+'px';});
+(function loop(){rx+=(mx-rx)*.11;ry+=(my-ry)*.11;curR.style.left=rx+'px';curR.style.top=ry+'px';requestAnimationFrame(loop);})();
+
+/* ── THEME ── */
+let theme = localStorage.getItem('dc-theme')||'dark';
+document.documentElement.setAttribute('data-theme',theme);
+function syncIcon(){document.getElementById('theme-icon').className=theme==='dark'?'fas fa-sun':'fas fa-moon';}
+syncIcon();
+function toggleTheme(){
+  theme=theme==='dark'?'light':'dark';
+  document.documentElement.setAttribute('data-theme',theme);
+  localStorage.setItem('dc-theme',theme);
+  syncIcon();
+}
+
+/* ── LOADER ── */
+function showLoader(txt='Loading…'){document.getElementById('ldr-txt').textContent=txt;document.getElementById('ldr').classList.add('open');}
+function hideLoader(){document.getElementById('ldr').classList.remove('open');}
+
+/* ── TOAST ── */
+function showToast(msg,type='info'){
+  const c=document.getElementById('tc');
+  const d=document.createElement('div');
+  const icons={success:'fa-circle-check',error:'fa-circle-xmark',info:'fa-circle-info'};
+  d.className=`toast ${type}`;
+  d.innerHTML=`<i class="fas ${icons[type]||icons.info} ${type}-i"></i>${msg}`;
+  c.appendChild(d);
+  setTimeout(()=>d.remove(),3200);
+}
+
+/* ── MODAL HELPERS ── */
+function showLoginModal(){document.getElementById('login-modal').classList.add('open');}
+function closeLoginModal(){document.getElementById('login-modal').classList.remove('open');}
+function openSettings(){
+  if(!window.currentUser){showLoginModal();return;}
+  fillSettingsForm(window.currentProfile);
+  document.getElementById('settings-modal').classList.add('open');
+  closeMenu();
+}
+function closeSettings(){document.getElementById('settings-modal').classList.remove('open');}
+document.querySelectorAll('.overlay').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');}));
+
+/* ── USER MENU ── */
+function toggleMenu(){document.getElementById('umenu').classList.toggle('open');}
+function closeMenu(){document.getElementById('umenu').classList.remove('open');}
+document.addEventListener('click',e=>{
+  const m=document.getElementById('umenu');
+  if(m&&!m.contains(e.target))m.classList.remove('open');
+});
+
+/* ── AUTH UI ── */
+function updateUIForLoggedIn(user){
+  document.getElementById('nav-out').style.display='none';
+  document.getElementById('nav-in').style.display='flex';
+  const ph=user.photoURL||`https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName||'U')}&bg=7fff6e&color=051200`;
+  ['nav-av','dd-av'].forEach(id=>document.getElementById(id).src=ph);
+  document.getElementById('nav-uname').textContent=(user.displayName||'User').split(' ')[0];
+  document.getElementById('dd-name').textContent=user.displayName||'User';
+  document.getElementById('dd-email').textContent=user.email||'';
+  closeLoginModal(); hideLoader();
+}
+function updateUIForLoggedOut(){
+  document.getElementById('nav-out').style.display='flex';
+  document.getElementById('nav-in').style.display='none';
+}
+
+/* ── NAVIGATION ── */
+function navigateHome(){
+  window.location.hash='';
+  window.currentUser?loadHomeFeed():loadHeroPage();
+}
+function goToMyProfile(){
+  if(!window.currentUser)return;
+  window.location.hash=`#/u/${window.currentUser.uid}`;
+  closeMenu();
+}
+function loadHomeFeed(){
+  if(!window.currentUser){loadHeroPage();return;}
+  showLoader('Loading your profile…');
+  window.loadProfilePage(window.currentUser.uid);
+}
+function myProfileUrl(){
+  return window.currentUser?`${location.origin}${location.pathname}#/u/${window.currentUser.uid}`:'';
+}
+
+/* ── HERO PAGE ── */
+function loadHeroPage(){
+  document.getElementById('main').innerHTML=`
+  <div class="hero">
+    <div class="hero-eyebrow">Dynamic Portfolio Platform</div>
+    <h1 class="hero-title">Showcase Your<br><span class="hl">Talent</span> to the World</h1>
+    <p class="hero-sub">Build a stunning developer portfolio in minutes. Share your skills, projects, and experience with a unique profile link.</p>
+    <div class="hero-btns">
+      <button class="prim" onclick="showLoginModal()" style="padding:13px 30px;font-size:.75rem;">
+        <i class="fas fa-rocket"></i> Get Started — Free
+      </button>
+      <button class="pbtn" onclick="showDemoProfile()" style="padding:13px 20px;">
+        <i class="fas fa-eye"></i> View Demo
+      </button>
+    </div>
+    <div class="feat-grid">
+      <div class="feat-card">
+        <div class="feat-icon"><i class="fas fa-link"></i></div>
+        <div class="feat-title">Unique Profile URL</div>
+        <div class="feat-desc">Every profile gets its own shareable link and QR code for instant access.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon"><i class="fas fa-bolt"></i></div>
+        <div class="feat-title">Realtime Database</div>
+        <div class="feat-desc">Powered by Firebase Realtime DB — changes sync instantly across all devices.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon"><i class="fas fa-palette"></i></div>
+        <div class="feat-title">Custom Themes</div>
+        <div class="feat-desc">Choose your accent color, toggle dark/light mode, and make it yours.</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ── RENDER PROFILE ── */
+function renderProfile(p, uid){
+  const isOwn = window.currentUser && window.currentUser.uid===uid;
+  const profileUrl = `${location.origin}${location.pathname}#/u/${uid}`;
+  const photo = p.photoURL||`https://ui-avatars.com/api/?name=${encodeURIComponent(p.displayName||'User')}&size=200&background=7fff6e&color=051200`;
+
+  const skillsHtml = (p.skills||[]).length
+    ? (p.skills).map(s=>`<span class="skill-tag">${s}</span>`).join('')
+    : `<div class="empty"><i class="fas fa-code"></i><p>No skills added yet.</p></div>`;
+
+  const expHtml = (p.experience||[]).length
+    ? p.experience.map(e=>`<div class="tl-item">
+        <div class="tl-title">${e.title||''}</div>
+        <div class="tl-sub"><i class="fas fa-building"></i>${e.company||''}</div>
+        <div class="tl-date"><i class="fas fa-calendar"></i>${e.date||''}</div>
+        ${e.desc?`<div class="tl-desc">${e.desc}</div>`:''}
+      </div>`).join('')
+    : `<div class="empty"><i class="fas fa-briefcase"></i><p>No experience added yet.</p></div>`;
+
+  const eduHtml = (p.education||[]).length
+    ? p.education.map(e=>`<div class="tl-item">
+        <div class="tl-title">${e.degree||''}</div>
+        <div class="tl-sub"><i class="fas fa-university"></i>${e.institution||''}</div>
+        <div class="tl-date"><i class="fas fa-calendar"></i>${e.date||''}</div>
+        ${e.desc?`<div class="tl-desc">${e.desc}</div>`:''}
+      </div>`).join('')
+    : `<div class="empty"><i class="fas fa-graduation-cap"></i><p>No education added yet.</p></div>`;
+
+  const projHtml = (p.projects||[]).length
+    ? `<div class="proj-grid">${p.projects.map(pr=>`
+        <div class="proj-card" onclick="${pr.url?`window.open('${pr.url}','_blank')`:''}">
+          <div class="proj-icon"><i class="fas fa-${pr.icon||'rocket'}"></i></div>
+          <div class="proj-title">${pr.title||'Untitled'}</div>
+          <div class="proj-desc">${pr.desc||''}</div>
+          <div class="proj-tags">${(pr.tags||[]).map(t=>`<span class="proj-tag">${t}</span>`).join('')}</div>
+          ${pr.url?`<div class="proj-link"><i class="fas fa-arrow-up-right-from-square"></i>View Project</div>`:''}
+        </div>`).join('')}</div>`
+    : `<div class="empty"><i class="fas fa-rocket"></i><p>No projects added yet.</p></div>`;
+
+  const socialHtml = `<div class="socials">
+    ${p.github?`<a href="https://github.com/${p.github}" target="_blank" class="soc-link gh" title="GitHub"><i class="fab fa-github"></i></a>`:''}
+    ${p.linkedin?`<a href="https://linkedin.com/in/${p.linkedin}" target="_blank" class="soc-link li" title="LinkedIn"><i class="fab fa-linkedin-in"></i></a>`:''}
+    ${p.twitter?`<a href="https://twitter.com/${p.twitter}" target="_blank" class="soc-link tw" title="Twitter / X"><i class="fab fa-x-twitter"></i></a>`:''}
+    ${p.facebook?`<a href="${p.facebook.startsWith('http')?p.facebook:'https://facebook.com/'+p.facebook}" target="_blank" class="soc-link fb" title="Facebook"><i class="fab fa-facebook-f"></i></a>`:''}
+    ${p.instagram?`<a href="https://instagram.com/${p.instagram}" target="_blank" class="soc-link ig" title="Instagram"><i class="fab fa-instagram"></i></a>`:''}
+    ${p.youtube?`<a href="${p.youtube.startsWith('http')?p.youtube:'https://youtube.com/'+p.youtube}" target="_blank" class="soc-link yt" title="YouTube"><i class="fab fa-youtube"></i></a>`:''}
+    ${p.website?`<a href="${p.website}" target="_blank" class="soc-link wb" title="Website"><i class="fas fa-globe"></i></a>`:''}
+  </div>`;
+
+  const achHtml = (p.achievements||[]).length
+    ? `<div class="ach-wrap">${p.achievements.map(a=>`<span class="ach-badge"><i class="fas fa-trophy"></i>${a}</span>`).join('')}</div>`
+    : '';
+
+  document.getElementById('main').innerHTML=`
+  <div class="cover-wrap">
+    <div class="cover-bg" ${p.coverPhoto?`style="background:url('${p.coverPhoto}') center/cover no-repeat"`:''}>
+      ${!p.coverPhoto?'<div class="cover-pattern"></div>':''}
+    </div>
+    <div class="cover-overlay"></div>
+  </div>
+
+  <div class="profile-wrap">
+    <div class="profile-header">
+      <div class="prof-top">
+        <div style="display:flex;gap:1.2rem;align-items:flex-end;flex-wrap:wrap;">
+          <div class="av-wrap">
+            <img class="prof-av" src="${photo}" alt="${p.displayName||'User'}">
+            ${p.verified?'<div class="verified-dot" title="Verified"><i class="fas fa-check"></i></div>':''}
+          </div>
+          <div class="prof-info">
+            <div class="prof-name">
+              ${p.displayName||'Anonymous Dev'}
+              ${p.verified?'<i class="fas fa-circle-check" style="color:var(--accent);font-size:.9rem;" title="Verified"></i>':''}
+            </div>
+            <div class="prof-handle">@<span>${p.username||uid.substring(0,10)}</span> &nbsp;·&nbsp; <i class="fas fa-code" style="color:var(--accent);font-size:.6rem;"></i> ${p.profession||'Developer'}</div>
+            <div class="prof-bio">${p.bio||'Passionate developer building cool things.'}</div>
+            <div class="prof-meta">
+              ${p.location?`<span class="meta-chip"><i class="fas fa-location-dot"></i>${p.location}</span>`:''}
+              ${p.website?`<a class="meta-chip" href="${p.website}" target="_blank"><i class="fas fa-globe"></i>${p.website.replace(/https?:\/\//,'')}</a>`:''}
+              <span class="meta-chip"><i class="fas fa-calendar-days"></i>Joined ${new Date(p.joinedAt||Date.now()).toLocaleDateString('en-US',{month:'short',year:'numeric'})}</span>
+              ${p.showViews!==false&&p.profileViews?`<span class="meta-chip"><i class="fas fa-eye"></i>${p.profileViews.toLocaleString()} views</span>`:''}
+              ${p.showEmail&&p.email?`<span class="meta-chip"><i class="fas fa-envelope"></i>${p.email}</span>`:''}
+              ${p.showPhone&&p.phone?`<span class="meta-chip"><i class="fas fa-phone"></i>${p.phone}</span>`:''}
+            </div>
+            ${socialHtml}
+          </div>
+        </div>
+        <div class="prof-actions">
+          ${isOwn?`
+            <button class="prim" onclick="openSettings()"><i class="fas fa-pen"></i> Edit Profile</button>
+            <button class="pbtn" onclick="shareProfile()"><i class="fas fa-share-nodes"></i> Share</button>
+          `:`
+            <button class="prim"><i class="fas fa-user-plus"></i> Follow</button>
+            <button class="pbtn"><i class="fas fa-envelope"></i> Message</button>
+          `}
+        </div>
+      </div>
+
+      <!-- Profile URL -->
+      <div class="url-bar">
+        <i class="fas fa-link"></i>
+        <span>${profileUrl}</span>
+        <button class="copy-btn" onclick="copyUrl('${profileUrl}')"><i class="fas fa-copy"></i> Copy</button>
+        <button class="copy-btn" onclick="showQRModal('${profileUrl}')"><i class="fas fa-qrcode"></i> QR</button>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-bar">
+        <div class="stat-item"><div class="stat-val">${(p.followers||0).toLocaleString()}</div><div class="stat-lbl"><i class="fas fa-users" style="margin-right:3px;"></i>Followers</div></div>
+        <div class="stat-item"><div class="stat-val">${(p.following||0).toLocaleString()}</div><div class="stat-lbl"><i class="fas fa-user-check" style="margin-right:3px;"></i>Following</div></div>
+        <div class="stat-item"><div class="stat-val">${(p.projects||[]).length}</div><div class="stat-lbl"><i class="fas fa-rocket" style="margin-right:3px;"></i>Projects</div></div>
+        <div class="stat-item"><div class="stat-val">${(p.skills||[]).length}</div><div class="stat-lbl"><i class="fas fa-code" style="margin-right:3px;"></i>Skills</div></div>
+        <div class="stat-item"><div class="stat-val">${(p.profileViews||0).toLocaleString()}</div><div class="stat-lbl"><i class="fas fa-eye" style="margin-right:3px;"></i>Views</div></div>
+      </div>
+    </div><!-- /profile-header -->
+
+    <!-- Content -->
+    <div class="content-grid">
+      <!-- LEFT -->
+      <div>
+        <!-- Skills -->
+        <div class="card">
+          <div class="card-hd"><i class="fas fa-code"></i> Skills & Technologies</div>
+          <div class="skill-wrap">${skillsHtml}</div>
+        </div>
+
+        <!-- Education -->
+        <div class="card">
+          <div class="card-hd"><i class="fas fa-graduation-cap"></i> Education</div>
+          <div class="timeline">${eduHtml}</div>
+        </div>
+
+        <!-- QR -->
+        <div class="card">
+          <div class="card-hd"><i class="fas fa-qrcode"></i> Profile QR Code</div>
+          <div class="qr-wrap">
+            <div id="qr-mini"></div>
+            <div class="qr-url">${profileUrl}</div>
+            <button class="copy-btn" onclick="showQRModal('${profileUrl}')"><i class="fas fa-expand"></i> Enlarge</button>
+          </div>
+        </div>
+
+        ${achHtml?`<div class="card"><div class="card-hd"><i class="fas fa-trophy"></i> Achievements</div>${achHtml}</div>`:''}
+      </div>
+
+      <!-- RIGHT -->
+      <div>
+        <!-- Experience -->
+        <div class="card">
+          <div class="card-hd"><i class="fas fa-briefcase"></i> Work Experience</div>
+          <div class="timeline">${expHtml}</div>
+        </div>
+
+        <!-- Projects -->
+        <div class="card">
+          <div class="card-hd"><i class="fas fa-rocket"></i> Projects</div>
+          ${projHtml}
+        </div>
+
+        <!-- Activity -->
+        <div class="card">
+          <div class="card-hd"><i class="fas fa-bolt"></i> Recent Activity</div>
+          <div class="act-item">
+            <div class="act-icon"><i class="fas fa-user-plus"></i></div>
+            <div>
+              <div class="act-text">Joined DevCard and created a portfolio profile</div>
+              <div class="act-time"><i class="fas fa-clock" style="margin-right:4px;"></i>${new Date(p.joinedAt||Date.now()).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</div>
+            </div>
+          </div>
+          ${(p.projects||[]).length?`<div class="act-item">
+            <div class="act-icon"><i class="fas fa-code-commit"></i></div>
+            <div>
+              <div class="act-text">Added ${(p.projects||[]).length} project${(p.projects||[]).length>1?'s':''} to portfolio</div>
+              <div class="act-time"><i class="fas fa-clock" style="margin-right:4px;"></i>Recently</div>
+            </div>
+          </div>`:''}
+          ${(p.skills||[]).length?`<div class="act-item">
+            <div class="act-icon"><i class="fas fa-layer-group"></i></div>
+            <div>
+              <div class="act-text">Listed ${(p.skills||[]).length} skills on profile</div>
+              <div class="act-time"><i class="fas fa-clock" style="margin-right:4px;"></i>Recently</div>
+            </div>
+          </div>`:''}
+        </div>
+      </div>
+    </div><!-- /content-grid -->
+  </div><!-- /profile-wrap -->`;
+
+  /* generate mini QR */
+  setTimeout(()=>{
+    const el=document.getElementById('qr-mini');
+    if(el){el.innerHTML='';new QRCode(el,{text:profileUrl,width:120,height:120,
+      colorDark:theme==='dark'?'#7fff6e':'#2a8f00',
+      colorLight:theme==='dark'?'#13131f':'#ffffff',
+      correctLevel:QRCode.CorrectLevel.H});}
+  },200);
+}
+
+/* ── QR MODAL ── */
+function showQRModal(url){
+  document.getElementById('qr-modal-el')?.remove();
+  const w=document.createElement('div');
+  w.id='qr-modal-el'; w.className='overlay open';
+  w.innerHTML=`<div class="modal" style="max-width:320px;text-align:center;">
+    <button class="modal-x" onclick="document.getElementById('qr-modal-el').remove()"><i class="fas fa-xmark"></i></button>
+    <div class="modal-title"><i class="fas fa-qrcode" style="color:var(--accent);margin-right:8px;"></i><span>QR Code</span></div>
+    <div id="qr-large" style="display:inline-block;border-radius:12px;overflow:hidden;margin:1rem 0;border:1px solid var(--border2);"></div>
+    <div class="qr-url" style="margin-bottom:1rem;">${url}</div>
+    <div style="display:flex;gap:8px;justify-content:center;">
+      <button class="pbtn" onclick="copyUrl('${url}')"><i class="fas fa-copy"></i> Copy URL</button>
+      <button class="prim" onclick="downloadQR()"><i class="fas fa-download"></i> Download</button>
+    </div>
+  </div>`;
+  document.body.appendChild(w);
+  w.addEventListener('click',e=>{if(e.target===w)w.remove();});
+  setTimeout(()=>{
+    new QRCode(document.getElementById('qr-large'),{text:url,width:200,height:200,
+      colorDark:theme==='dark'?'#7fff6e':'#2a8f00',
+      colorLight:theme==='dark'?'#13131f':'#ffffff',
+      correctLevel:QRCode.CorrectLevel.H});
+  },100);
+}
+function downloadQR(){
+  const canvas=document.querySelector('#qr-large canvas');
+  if(!canvas){showToast('QR not ready yet.','error');return;}
+  const a=document.createElement('a');a.download='qr-code.png';a.href=canvas.toDataURL();a.click();
+  showToast('QR downloaded!','success');
+}
+function copyUrl(url){
+  navigator.clipboard.writeText(url).then(()=>showToast('URL copied to clipboard ✓','success'));
+}
+function shareProfile(){
+  if(!window.currentUser)return;
+  const url=myProfileUrl();
+  if(navigator.share){navigator.share({title:(window.currentProfile?.displayName||'DevCard')+' — Portfolio',url});}
+  else{copyUrl(url);}
+}
+
+/* ── SETTINGS ── */
+function fillSettingsForm(p){
+  if(!p)return;
+  const sv=(id,v)=>{const e=document.getElementById(id);if(e)e.value=v||'';};
+  const sc=(id,v)=>{const e=document.getElementById(id);if(e)e.checked=!!v;};
+  sv('s-name',p.displayName); sv('s-profession',p.profession); sv('s-bio',p.bio);
+  sv('s-location',p.location); sv('s-phone',p.phone); sv('s-website',p.website);
+  sv('s-photo',p.photoURL); sv('s-cover',p.coverPhoto);
+  sv('s-github',p.github); sv('s-linkedin',p.linkedin); sv('s-twitter',p.twitter);
+  sv('s-facebook',p.facebook); sv('s-instagram',p.instagram); sv('s-youtube',p.youtube);
+  sv('s-skills',(p.skills||[]).join(', '));
+  sv('s-experience',JSON.stringify(p.experience||[],null,2));
+  sv('s-education',JSON.stringify(p.education||[],null,2));
+  sv('s-projects',JSON.stringify(p.projects||[],null,2));
+  sv('s-theme',p.theme||'dark');
+  sc('s-public',p.isPublic!==false); sc('s-show-email',p.showEmail);
+  sc('s-show-phone',p.showPhone); sc('s-show-views',p.showViews!==false);
+  sc('s-notif-follow',p.notifFollow!==false); sc('s-notif-view',p.notifView);
+}
+function swTab(tab){
+  document.querySelectorAll('.stab').forEach(t=>t.style.display='none');
+  document.querySelectorAll('.tab-btn[id^="stb-"]').forEach(b=>b.classList.remove('active'));
+  document.getElementById('st-'+tab).style.display='block';
+  document.getElementById('stb-'+tab).classList.add('active');
+}
+function pickAccent(c,el){
+  document.querySelectorAll('.sw').forEach(s=>s.classList.remove('sel'));
+  el.classList.add('sel');
+  document.documentElement.style.setProperty('--accent',c);
+}
+function submitSettings(){
+  const gv=id=>document.getElementById(id)?.value||'';
+  const gc=id=>document.getElementById(id)?.checked;
+  let exp=[],edu=[],proj=[];
+  try{exp=JSON.parse(gv('s-experience')||'[]');}catch{showToast('Work Experience: invalid JSON format','error');return;}
+  try{edu=JSON.parse(gv('s-education')||'[]');}catch{showToast('Education: invalid JSON format','error');return;}
+  try{proj=JSON.parse(gv('s-projects')||'[]');}catch{showToast('Projects: invalid JSON format','error');return;}
+  const skills=gv('s-skills').split(',').map(s=>s.trim()).filter(Boolean);
+  const data={
+    displayName:gv('s-name'),profession:gv('s-profession'),bio:gv('s-bio'),
+    location:gv('s-location'),phone:gv('s-phone'),website:gv('s-website'),
+    photoURL:gv('s-photo'),coverPhoto:gv('s-cover'),
+    github:gv('s-github'),linkedin:gv('s-linkedin'),twitter:gv('s-twitter'),
+    facebook:gv('s-facebook'),instagram:gv('s-instagram'),youtube:gv('s-youtube'),
+    skills,experience:exp,education:edu,projects:proj,
+    theme:gv('s-theme'),
+    isPublic:gc('s-public'),showEmail:gc('s-show-email'),showPhone:gc('s-show-phone'),
+    showViews:gc('s-show-views'),notifFollow:gc('s-notif-follow'),notifView:gc('s-notif-view'),
+    updatedAt:Date.now()
+  };
+  window.saveProfile(data);
+  document.documentElement.setAttribute('data-theme',data.theme);
+  theme=data.theme; localStorage.setItem('dc-theme',theme); syncIcon();
+}
+
+/* ── ADMIN ── */
+function checkAdmin(){
+  if(!window.currentUser){showLoginModal();return;}
+  if(!window.currentProfile?.isAdmin){showToast('Access denied — Admin only.','error');return;}
+  showLoader('Loading admin panel…');
+  window.location.hash='#/admin';
+  window.loadAdminPanel();
+}
+function renderAdminPanel(users){
+  hideLoader();
+  const list=Object.entries(users);
+  const total=list.length;
+  const active=list.filter(([,u])=>u.status!=='banned').length;
+  const banned=list.filter(([,u])=>u.status==='banned').length;
+  const admins=list.filter(([,u])=>u.isAdmin).length;
+
+  const rows=list.map(([uid,u])=>`<tr>
+    <td>
+      <div style="display:flex;align-items:center;gap:9px;">
+        <img src="${u.photoURL||`https://ui-avatars.com/api/?name=${encodeURIComponent(u.displayName||'?')}&size=32&background=7fff6e&color=051200`}"
+          style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid var(--border2);">
+        <div>
+          <div style="font-weight:600;font-size:.84rem;">${u.displayName||'Unknown'}</div>
+          <div style="font-family:'Space Mono',monospace;font-size:.54rem;color:var(--text3);">${u.email||'—'}</div>
+        </div>
+      </div>
+    </td>
+    <td>
+      <span class="sbadge ${u.status==='banned'?'banned':'active'}">${u.status==='banned'?'<i class="fas fa-ban" style="margin-right:3px;"></i>Banned':'<i class="fas fa-circle-check" style="margin-right:3px;"></i>Active'}</span>
+      ${u.isAdmin?'<span class="sbadge admin-s" style="margin-left:5px;"><i class="fas fa-shield-halved" style="margin-right:3px;"></i>Admin</span>':''}
+      ${u.verified?'<i class="fas fa-badge-check" style="color:var(--accent);margin-left:6px;font-size:.8rem;" title="Verified"></i>':''}
+    </td>
+    <td style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--text3);">${new Date(u.joinedAt||0).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</td>
+    <td style="font-family:'Syne',sans-serif;font-weight:600;">${(u.profileViews||0).toLocaleString()}</td>
+    <td>
+      <div class="abtns">
+        <button class="abtn" onclick="window.location.hash='#/u/${uid}'"><i class="fas fa-eye"></i>View</button>
+        <button class="abtn vfy" onclick="adminToggleVerify('${uid}',${!!u.verified})"><i class="fas fa-${u.verified?'times':'check'}-circle"></i>${u.verified?'Unverify':'Verify'}</button>
+        <button class="abtn ban" onclick="adminToggleStatus('${uid}','${u.status||'active'}')"><i class="fas fa-${u.status==='banned'?'unlock':'ban'}"></i>${u.status==='banned'?'Unban':'Ban'}</button>
+        <button class="abtn prom" onclick="adminMakeAdmin('${uid}',${!!u.isAdmin})"><i class="fas fa-${u.isAdmin?'user-minus':'shield-halved'}"></i>${u.isAdmin?'Remove Admin':'Make Admin'}</button>
+        <button class="abtn del" onclick="adminDeleteUser('${uid}')"><i class="fas fa-trash"></i>Delete</button>
+      </div>
+    </td>
+  </tr>`).join('');
+
+  document.getElementById('main').innerHTML=`
+  <div class="admin-wrap">
+    <div class="admin-hd"><i class="fas fa-shield-halved" style="color:var(--accent3);margin-right:10px;"></i>Admin <span>Control Panel</span></div>
+    <div class="admin-sub"><i class="fas fa-users" style="margin-right:6px;"></i>Manage all registered users</div>
+
+    <div class="admin-cards">
+      <div class="admin-card">
+        <div class="admin-card-val">${total}</div>
+        <div class="admin-card-lbl">Total Users</div>
+        <i class="fas fa-users admin-card-icon"></i>
+      </div>
+      <div class="admin-card" style="--accent:var(--success)">
+        <div class="admin-card-val" style="color:var(--success)">${active}</div>
+        <div class="admin-card-lbl">Active</div>
+        <i class="fas fa-circle-check admin-card-icon" style="color:var(--success);"></i>
+      </div>
+      <div class="admin-card" style="--accent:var(--error)">
+        <div class="admin-card-val" style="color:var(--error)">${banned}</div>
+        <div class="admin-card-lbl">Banned</div>
+        <i class="fas fa-ban admin-card-icon" style="color:var(--error);"></i>
+      </div>
+      <div class="admin-card" style="--accent:var(--warn)">
+        <div class="admin-card-val" style="color:var(--warn)">${admins}</div>
+        <div class="admin-card-lbl">Admins</div>
+        <i class="fas fa-shield-halved admin-card-icon" style="color:var(--warn);"></i>
+      </div>
+    </div>
+
+    <div class="admin-table-wrap">
+      <div class="admin-top">
+        <div class="admin-srch">
+          <i class="fas fa-magnifying-glass"></i>
+          <input type="text" placeholder="Search by name or email…" oninput="filterAdmin(this.value)">
+        </div>
+        <button class="pbtn" onclick="checkAdmin()"><i class="fas fa-rotate-right"></i> Refresh</button>
+        <button class="pbtn" onclick="navigateHome()"><i class="fas fa-arrow-left"></i> Back</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="admin-table">
+          <thead><tr>
+            <th><i class="fas fa-user" style="margin-right:5px;"></i>User</th>
+            <th><i class="fas fa-circle-dot" style="margin-right:5px;"></i>Status</th>
+            <th><i class="fas fa-calendar" style="margin-right:5px;"></i>Joined</th>
+            <th><i class="fas fa-eye" style="margin-right:5px;"></i>Views</th>
+            <th><i class="fas fa-wrench" style="margin-right:5px;"></i>Actions</th>
+          </tr></thead>
+          <tbody id="admin-tbody">${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  </div>`;
+}
+function filterAdmin(q){
+  document.querySelectorAll('#admin-tbody tr').forEach(r=>{
+    r.style.display=r.textContent.toLowerCase().includes(q.toLowerCase())?'':'none';
+  });
+}
+
+/* ── DEMO ── */
+function showDemoProfile(){
+  renderProfile({
+    uid:'demo',displayName:'Alex Johnson',profession:'Full Stack Developer',
+    bio:'Building scalable web apps with React, Node.js & Firebase. Open Source enthusiast and UI lover.',
+    location:'San Francisco, CA',website:'https://alexjohnson.dev',
+    github:'alexjohnson',linkedin:'alexjohnson',twitter:'alexjohnson',
+    facebook:'alexjohnson',instagram:'alexjohnson',
+    photoURL:'https://ui-avatars.com/api/?name=Alex+Johnson&size=200&background=7fff6e&color=051200',
+    skills:['JavaScript','TypeScript','React','Next.js','Node.js','Firebase','MongoDB','Docker','Python','AWS','GraphQL','Tailwind CSS'],
+    experience:[
+      {title:'Senior Frontend Developer',company:'Stripe',date:'Jan 2023 – Present',desc:'Leading the dashboard redesign with React 18, improving performance by 40%.'},
+      {title:'Full Stack Engineer',company:'Vercel',date:'Jun 2021 – Dec 2022',desc:'Built and maintained core platform features used by 100k+ developers.'},
+      {title:'Junior Web Developer',company:'Freelance',date:'2019 – 2021',desc:'Delivered 30+ client projects using React, Vue, and WordPress.'}
+    ],
+    education:[
+      {degree:'BSc Computer Science',institution:'Stanford University',date:'2015 – 2019',desc:'Graduated with honors. Specialized in distributed systems.'}
+    ],
+    projects:[
+      {icon:'rocket',title:'DevCard Portfolio',desc:'Firebase-powered dynamic portfolio platform with QR sharing.',tags:['React','Firebase','Node.js'],url:'#'},
+      {icon:'cart-shopping',title:'ShopFlow',desc:'Full-featured e-commerce platform with real-time inventory.',tags:['Next.js','MongoDB','Stripe'],url:'#'},
+      {icon:'robot',title:'AI Assistant',desc:'GPT-4 powered chat assistant with voice input support.',tags:['Python','OpenAI','WebSocket'],url:'#'},
+      {icon:'chart-line',title:'Analytics Dashboard',desc:'Real-time business metrics dashboard with beautiful charts.',tags:['React','D3.js','Firebase'],url:'#'}
+    ],
+    achievements:['Top Developer 2024','100+ GitHub Stars','Hackathon Winner 2023'],
+    joinedAt:Date.now()-86400000*200,profileViews:2847,followers:542,following:121,
+    verified:true,isPublic:true,showViews:true
+  },'demo');
+}
+
+/* ── ROUTING ── */
+window.addEventListener('hashchange',()=>{
+  const h=window.location.hash;
+  if(h.startsWith('#/u/')){
+    const uid=h.replace('#/u/','');
+    showLoader('Loading profile…');
+    if(window.loadProfilePage)window.loadProfilePage(uid);
+    else setTimeout(()=>window.loadProfilePage&&window.loadProfilePage(uid),800);
+  } else if(h==='#/admin'){
+    checkAdmin();
+  } else if(!h){
+    navigateHome();
+  }
+});
+
+/* ── INIT ── */
+loadHeroPage();
+hideLoader();
+</script>
+</body>
+</html>
