@@ -77,12 +77,12 @@
         await update(ref(db, `users/${user.uid}`), { lastSeen: Date.now() });
       }
       updateUIForLoggedIn(user);
-      navigateHome();
+      loadHomeFeed();
     } else {
       window.currentUser = null;
       window.currentProfile = null;
       updateUIForLoggedOut();
-      loadHeroPage();
+      loadHomeFeed();
     }
   });
 
@@ -395,6 +395,16 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .uc-badge-banned{position:absolute;top:8px;right:8px;background:rgba(255,78,106,.9);color:#fff;
   font-family:'Space Mono',monospace;font-size:.48rem;padding:2px 8px;border-radius:100px;text-transform:uppercase;}
 
+/* GUEST BANNER */
+.guest-banner{display:flex;align-items:center;justify-content:space-between;gap:1rem;
+  background:linear-gradient(135deg,var(--panel),var(--panel2));
+  border:1px solid rgba(127,255,110,.25);border-radius:var(--r);
+  padding:1.1rem 1.5rem;margin-bottom:1.5rem;flex-wrap:wrap;}
+.guest-banner-icon{width:44px;height:44px;border-radius:12px;
+  background:var(--accent-glow);border:1px solid rgba(127,255,110,.3);
+  display:flex;align-items:center;justify-content:center;
+  color:var(--accent);font-size:1.2rem;flex-shrink:0;}
+
 /* HERO PAGE */
 .hero{min-height:calc(100vh - 62px);display:flex;align-items:center;
   justify-content:center;flex-direction:column;text-align:center;padding:2rem 1.5rem;}
@@ -569,8 +579,8 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .modal-title{font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:800;margin-bottom:1.25rem;}
 .modal-title span{color:var(--accent);}
 
-/* EDIT PROFILE MODAL — Simple */
-.edit-modal{max-width:600px;}
+/* EDIT PROFILE MODAL — Simple Single Form */
+.edit-modal{max-width:640px;max-height:90vh;overflow-y:auto;}
 .ep-section{margin-bottom:1.5rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border);}
 .ep-section:last-of-type{border-bottom:none;margin-bottom:0;}
 .ep-section-title{font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;
@@ -883,24 +893,17 @@ footer{background:var(--bg2);border-top:1px solid var(--border);padding:1.75rem 
   </div>
 </div>
 
-<!-- EDIT PROFILE MODAL (Simple) -->
+<!-- EDIT PROFILE MODAL (Simple Single Form) -->
 <div class="overlay" id="edit-modal">
-  <div class="modal edit-modal">
+  <div class="modal edit-modal" style="max-width:640px;">
     <button class="modal-x" onclick="closeEditModal()"><i class="fas fa-xmark"></i></button>
     <div class="modal-title"><i class="fas fa-pen" style="color:var(--accent);margin-right:8px;"></i>Edit <span>Profile</span></div>
-    <div class="edit-tabs">
-      <button class="etab active" onclick="switchETab('basic',this)"><i class="fas fa-user" style="margin-right:4px;"></i>Basic</button>
-      <button class="etab" onclick="switchETab('social',this)"><i class="fab fa-share-nodes" style="margin-right:4px;"></i>Social</button>
-      <button class="etab" onclick="switchETab('skills',this)"><i class="fas fa-code" style="margin-right:4px;"></i>Skills</button>
-      <button class="etab" onclick="switchETab('work',this)"><i class="fas fa-briefcase" style="margin-right:4px;"></i>Work</button>
-      <button class="etab" onclick="switchETab('projects',this)"><i class="fas fa-rocket" style="margin-right:4px;"></i>Projects</button>
-      <button class="etab" onclick="switchETab('privacy',this)"><i class="fas fa-lock" style="margin-right:4px;"></i>Privacy</button>
-    </div>
 
-    <!-- Basic -->
-    <div class="etab-pane active" id="ep-basic">
+    <!-- Basic Info -->
+    <div class="ep-section">
+      <div class="ep-section-title"><i class="fas fa-user"></i> Basic Info</div>
       <div class="frow">
-        <div class="fg"><label class="flabel"><i class="fas fa-user"></i>Full Name</label><input class="finput" id="ep-name" placeholder="Your full name"></div>
+        <div class="fg"><label class="flabel"><i class="fas fa-user"></i>Full Name *</label><input class="finput" id="ep-name" placeholder="Your full name"></div>
         <div class="fg"><label class="flabel"><i class="fas fa-briefcase"></i>Profession</label><input class="finput" id="ep-profession" placeholder="e.g. Full Stack Developer"></div>
       </div>
       <div class="fg"><label class="flabel"><i class="fas fa-align-left"></i>Bio</label><textarea class="ftarea" id="ep-bio" placeholder="Tell the world about yourself…"></textarea></div>
@@ -909,53 +912,75 @@ footer{background:var(--bg2);border-top:1px solid var(--border);padding:1.75rem 
         <div class="fg"><label class="flabel"><i class="fas fa-phone"></i>Phone</label><input class="finput" id="ep-phone" placeholder="+880 ..."></div>
       </div>
       <div class="fg"><label class="flabel"><i class="fas fa-globe"></i>Website</label><input class="finput" id="ep-website" placeholder="https://yoursite.com"></div>
+    </div>
+
+    <!-- Photos -->
+    <div class="ep-section">
+      <div class="ep-section-title"><i class="fas fa-images"></i> Photos</div>
       <div class="frow">
-        <div class="fg"><label class="flabel"><i class="fas fa-image"></i>Profile Photo URL</label><input class="finput" id="ep-photo" placeholder="https://…/avatar.jpg"></div>
-        <div class="fg"><label class="flabel"><i class="fas fa-panorama"></i>Cover Photo URL</label><input class="finput" id="ep-cover" placeholder="https://…/cover.jpg"></div>
+        <div class="fg">
+          <label class="flabel"><i class="fas fa-image"></i>Profile Photo URL</label>
+          <input class="finput" id="ep-photo" placeholder="https://…/avatar.jpg" oninput="previewImg('ep-photo','ep-photo-prev')">
+          <img id="ep-photo-prev" style="width:54px;height:54px;border-radius:50%;object-fit:cover;margin-top:8px;border:2px solid var(--border2);display:none;" alt="preview">
+        </div>
+        <div class="fg">
+          <label class="flabel"><i class="fas fa-panorama"></i>Cover Photo URL</label>
+          <input class="finput" id="ep-cover" placeholder="https://…/cover.jpg" oninput="previewImg('ep-cover','ep-cover-prev')">
+          <img id="ep-cover-prev" style="width:100%;height:50px;object-fit:cover;border-radius:8px;margin-top:8px;border:2px solid var(--border2);display:none;" alt="preview">
+        </div>
       </div>
     </div>
 
-    <!-- Social -->
-    <div class="etab-pane" id="ep-social">
-      <div class="fg"><label class="flabel"><i class="fab fa-github"></i>GitHub username</label><input class="finput" id="ep-github" placeholder="username"></div>
-      <div class="fg"><label class="flabel"><i class="fab fa-linkedin-in"></i>LinkedIn username</label><input class="finput" id="ep-linkedin" placeholder="username"></div>
-      <div class="fg"><label class="flabel"><i class="fab fa-x-twitter"></i>Twitter / X username</label><input class="finput" id="ep-twitter" placeholder="username"></div>
-      <div class="fg"><label class="flabel"><i class="fab fa-facebook-f"></i>Facebook</label><input class="finput" id="ep-facebook" placeholder="username or profile URL"></div>
-      <div class="fg"><label class="flabel"><i class="fab fa-instagram"></i>Instagram username</label><input class="finput" id="ep-instagram" placeholder="username"></div>
-      <div class="fg"><label class="flabel"><i class="fab fa-youtube"></i>YouTube</label><input class="finput" id="ep-youtube" placeholder="channel URL or @handle"></div>
+    <!-- Social Links -->
+    <div class="ep-section">
+      <div class="ep-section-title"><i class="fab fa-github"></i> Social Links</div>
+      <div class="frow">
+        <div class="fg"><label class="flabel"><i class="fab fa-github"></i>GitHub username</label><input class="finput" id="ep-github" placeholder="username"></div>
+        <div class="fg"><label class="flabel"><i class="fab fa-linkedin-in"></i>LinkedIn username</label><input class="finput" id="ep-linkedin" placeholder="username"></div>
+      </div>
+      <div class="frow">
+        <div class="fg"><label class="flabel"><i class="fab fa-x-twitter"></i>Twitter / X</label><input class="finput" id="ep-twitter" placeholder="username"></div>
+        <div class="fg"><label class="flabel"><i class="fab fa-facebook-f"></i>Facebook</label><input class="finput" id="ep-facebook" placeholder="username or URL"></div>
+      </div>
+      <div class="frow">
+        <div class="fg"><label class="flabel"><i class="fab fa-instagram"></i>Instagram</label><input class="finput" id="ep-instagram" placeholder="username"></div>
+        <div class="fg"><label class="flabel"><i class="fab fa-youtube"></i>YouTube</label><input class="finput" id="ep-youtube" placeholder="@handle or URL"></div>
+      </div>
     </div>
 
     <!-- Skills -->
-    <div class="etab-pane" id="ep-skills">
+    <div class="ep-section">
+      <div class="ep-section-title"><i class="fas fa-code"></i> Skills</div>
       <div class="fg">
-        <label class="flabel"><i class="fas fa-code"></i>Skills</label>
-        <div class="tags-input-wrap" id="skills-tags-wrap" onclick="document.getElementById('skill-inp').focus()">
-          <input type="text" class="tags-input" id="skill-inp" placeholder="Type and press Enter…"
-            onkeydown="handleSkillInput(event)">
+        <div class="tags-input-wrap" id="skills-tags-wrap" onclick="document.getElementById('skill-inp')?.focus()">
+          <input type="text" class="tags-input" id="skill-inp" placeholder="Type a skill and press Enter…" onkeydown="handleSkillInput(event)">
         </div>
-        <div class="tag-hint"><i class="fas fa-circle-info" style="margin-right:4px;color:var(--accent2);"></i>Press Enter or comma to add a skill. Click × to remove.</div>
+        <div class="tag-hint"><i class="fas fa-circle-info" style="margin-right:4px;color:var(--accent2);"></i>Enter চাপলে skill যোগ হবে। × দিয়ে মুছুন।</div>
       </div>
     </div>
 
-    <!-- Work -->
-    <div class="etab-pane" id="ep-work">
+    <!-- Experience & Education -->
+    <div class="ep-section">
+      <div class="ep-section-title"><i class="fas fa-briefcase"></i> Work Experience</div>
       <div id="exp-list"></div>
       <button class="pbtn" onclick="addExpItem()" style="margin-top:.5rem;"><i class="fas fa-plus"></i> Add Experience</button>
-      <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border);">
-        <div class="fsec"><i class="fas fa-graduation-cap"></i>Education</div>
-        <div id="edu-list"></div>
-        <button class="pbtn" onclick="addEduItem()" style="margin-top:.5rem;"><i class="fas fa-plus"></i> Add Education</button>
-      </div>
+    </div>
+    <div class="ep-section">
+      <div class="ep-section-title"><i class="fas fa-graduation-cap"></i> Education</div>
+      <div id="edu-list"></div>
+      <button class="pbtn" onclick="addEduItem()" style="margin-top:.5rem;"><i class="fas fa-plus"></i> Add Education</button>
     </div>
 
     <!-- Projects -->
-    <div class="etab-pane" id="ep-projects">
+    <div class="ep-section">
+      <div class="ep-section-title"><i class="fas fa-rocket"></i> Projects</div>
       <div id="proj-list"></div>
       <button class="pbtn" onclick="addProjItem()" style="margin-top:.5rem;"><i class="fas fa-plus"></i> Add Project</button>
     </div>
 
-    <!-- Privacy -->
-    <div class="etab-pane" id="ep-privacy">
+    <!-- Privacy & Theme -->
+    <div class="ep-section">
+      <div class="ep-section-title"><i class="fas fa-lock"></i> Privacy & Theme</div>
       <div class="tog-row">
         <div class="tog-info"><div class="tog-label">Public Profile</div><div class="tog-desc">Anyone can view your profile</div></div>
         <label class="tog"><input type="checkbox" id="ep-public" checked><span class="tog-sl"></span></label>
@@ -972,15 +997,13 @@ footer{background:var(--bg2);border-top:1px solid var(--border);padding:1.75rem 
         <div class="tog-info"><div class="tog-label">Show Profile Views</div><div class="tog-desc">Let others see your view count</div></div>
         <label class="tog"><input type="checkbox" id="ep-show-views" checked><span class="tog-sl"></span></label>
       </div>
-      <div style="margin-top:1.25rem;">
-        <div class="fsec"><i class="fas fa-palette"></i>Theme</div>
-        <div class="fg"><label class="flabel"><i class="fas fa-circle-half-stroke"></i>Color Mode</label>
-          <select class="fsel" id="ep-theme"><option value="dark">🌙 Dark Mode</option><option value="light">☀️ Light Mode</option></select>
-        </div>
+      <div class="fg" style="margin-top:1rem;">
+        <label class="flabel"><i class="fas fa-circle-half-stroke"></i>Color Mode</label>
+        <select class="fsel" id="ep-theme"><option value="dark">🌙 Dark Mode</option><option value="light">☀️ Light Mode</option></select>
       </div>
     </div>
 
-    <div style="display:flex;gap:8px;margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border);">
+    <div style="display:flex;gap:8px;padding-top:1.25rem;border-top:1px solid var(--border);position:sticky;bottom:0;background:var(--panel);padding-bottom:4px;">
       <button class="prim" onclick="submitEdit()" style="flex:1;justify-content:center;"><i class="fas fa-check"></i> Save Changes</button>
       <button class="pbtn" onclick="closeEditModal()"><i class="fas fa-xmark"></i> Cancel</button>
     </div>
@@ -1056,7 +1079,7 @@ function updateUIForLoggedIn(user) {
 function updateUIForLoggedOut() {
   document.getElementById('nav-out').style.display = 'flex';
   document.getElementById('nav-in').style.display = 'none';
-  document.getElementById('nav-center-tabs').style.display = 'none';
+  document.getElementById('nav-center-tabs').style.display = 'flex';
 }
 
 /* ── NAVIGATION ── */
@@ -1068,7 +1091,7 @@ function switchTab(tab) {
 }
 function navigateHome() {
   window.location.hash = '';
-  window.currentUser ? loadHomeFeed() : loadHeroPage();
+  loadHomeFeed();
 }
 function goToMyProfile() {
   if (!window.currentUser) return;
@@ -1076,7 +1099,6 @@ function goToMyProfile() {
   closeMenu();
 }
 function loadHomeFeed() {
-  if (!window.currentUser) { loadHeroPage(); return; }
   showLoader('Loading feed…');
   loadExploreFeed();
 }
@@ -1179,6 +1201,16 @@ async function renderFeed(users) {
 
   document.getElementById('main').innerHTML = `
   <div class="feed-wrap">
+    ${!window.currentUser ? `<div class="guest-banner">
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+        <div class="guest-banner-icon"><i class="fas fa-bolt"></i></div>
+        <div>
+          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1rem;">DevCard সোশ্যাল নেটওয়ার্কে স্বাগতম!</div>
+          <div style="font-size:.82rem;color:var(--text2);margin-top:3px;">সব ডেভেলপার দেখুন। ফলো করতে ও প্রোফাইল বানাতে সাইন ইন করুন।</div>
+        </div>
+      </div>
+      <button class="prim" onclick="showLoginModal()" style="white-space:nowrap;"><i class="fas fa-rocket"></i> Join Free</button>
+    </div>` : ''}
     <div class="feed-header">
       <div class="feed-title"><i class="fas fa-users" style="color:var(--accent);margin-right:8px;"></i>Discover <span>Developers</span></div>
       <div class="feed-search">
@@ -1627,6 +1659,18 @@ function showAdminEditModal(uid, p) {
   w.addEventListener('click', e => { if (e.target === w) w.remove(); });
 }
 
+/* Preview image in edit modal */
+function previewImg(inputId, previewId) {
+  const url = document.getElementById(inputId)?.value?.trim();
+  const img = document.getElementById(previewId);
+  if (!img) return;
+  if (url) { img.src = url; img.style.display = 'block'; img.onerror = () => img.style.display = 'none'; }
+  else img.style.display = 'none';
+}
+
+/* Stub for legacy calls */
+function switchETab() {}
+
 /* ── EDIT PROFILE MODAL ── */
 let editSkills = [];
 let editExp = [];
@@ -1668,7 +1712,6 @@ function openEditModal() {
   if (thSel) thSel.value = p.theme || 'dark';
   // Show modal
   document.getElementById('edit-modal').classList.add('open');
-  switchETab('basic', document.querySelector('.etab'));
 }
 
 function closeEditModal() {
@@ -1837,7 +1880,10 @@ window.addEventListener('hashchange', () => {
 });
 
 /* ── INIT ── */
-loadHeroPage();
+// Show nav tabs immediately
+document.getElementById('nav-center-tabs').style.display = 'flex';
+// Load feed immediately for guests (Firebase auth check may take a moment)
+loadExploreFeed();
 hideLoader();
 </script>
 </body>
