@@ -102,9 +102,14 @@
 
   /* ── LOAD ALL USERS (Home Feed) ── */
   window.loadAllUsers = async () => {
-    const snap = await get(ref(db, "users"));
-    if (!snap.exists()) return {};
-    return snap.val();
+    try {
+      const snap = await get(ref(db, "users"));
+      if (!snap.exists()) return {};
+      return snap.val() || {};
+    } catch(e) {
+      console.error('loadAllUsers error:', e);
+      return {};
+    }
   };
 
   /* ── LOAD PROFILE ── */
@@ -1143,16 +1148,56 @@ let allUsersCache = {};
 
 async function loadExploreFeed() {
   try {
+    // Wait for Firebase to be ready (window.loadAllUsers set by the module)
+    let waited = 0;
+    while (!window.loadAllUsers && waited < 5000) {
+      await new Promise(r => setTimeout(r, 100));
+      waited += 100;
+    }
+    if (!window.loadAllUsers) {
+      showEmptyFeed();
+      hideLoader();
+      return;
+    }
     allUsersCache = await window.loadAllUsers();
-    renderFeed(allUsersCache);
+    if (!allUsersCache || typeof allUsersCache !== 'object') {
+      showEmptyFeed();
+      hideLoader();
+      return;
+    }
+    await renderFeed(allUsersCache);
     hideLoader();
   } catch(e) {
-    showToast('Failed to load users.', 'error');
+    console.error('loadExploreFeed error:', e);
+    showEmptyFeed();
     hideLoader();
   }
 }
 
+function showEmptyFeed() {
+  document.getElementById('main').innerHTML = `
+  <div class="feed-wrap">
+    ${!window.currentUser ? `<div class="guest-banner">
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+        <div class="guest-banner-icon"><i class="fas fa-bolt"></i></div>
+        <div>
+          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1rem;">DevCard সোশ্যাল নেটওয়ার্কে স্বাগতম!</div>
+          <div style="font-size:.82rem;color:var(--text2);margin-top:3px;">সব ডেভেলপার দেখুন। ফলো করতে ও প্রোফাইল বানাতে সাইন ইন করুন।</div>
+        </div>
+      </div>
+      <button class="prim" onclick="showLoginModal()" style="white-space:nowrap;"><i class="fas fa-rocket"></i> Join Free</button>
+    </div>` : ''}
+    <div class="feed-header">
+      <div class="feed-title"><i class="fas fa-users" style="color:var(--accent);margin-right:8px;"></i>Discover <span>Developers</span></div>
+    </div>
+    <div class="feed-grid">
+      <div style="grid-column:1/-1;"><div class="empty"><i class="fas fa-users"></i><p>এখনো কোনো ইউজার নেই। প্রথম জয়েন করুন!</p></div></div>
+    </div>
+  </div>`;
+}
+
 async function renderFeed(users) {
+  if (!users || typeof users !== 'object') { showEmptyFeed(); return; }
   const myUid = window.currentUser?.uid;
   let followingMap = {};
   if (myUid) {
@@ -1882,8 +1927,8 @@ window.addEventListener('hashchange', () => {
 /* ── INIT ── */
 // Show nav tabs immediately
 document.getElementById('nav-center-tabs').style.display = 'flex';
-// Load feed immediately for guests (Firebase auth check may take a moment)
-loadExploreFeed();
+// Load feed after a short delay to allow Firebase module to initialize
+setTimeout(() => { if (document.getElementById('main').innerHTML.trim() === '') loadExploreFeed(); }, 300);
 hideLoader();
 </script>
 </body>
