@@ -1,976 +1,546 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" data-theme="dark">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DevCard — Social Portfolio Platform</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<!-- Firebase CDN (non-module, global) -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script>
-const firebaseConfig = {
-  apiKey:"AIzaSyA_vr4EXR57ap2CRxlS1JpK6wHqIwlU8Rc",
-  authDomain:"devcard-6b634.firebaseapp.com",
-  databaseURL:"https://devcard-6b634-default-rtdb.firebaseio.com",
-  projectId:"devcard-6b634",
-  storageBucket:"devcard-6b634.firebasestorage.app",
-  messagingSenderId:"754891867884",
-  appId:"1:754891867884:web:f6ff7e2f8d2fcf8ae147c9"
-};
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.database();
-let currentUser = null;
-let currentProfile = null;
-let firebaseReady = false;
-
-auth.onAuthStateChanged(async (user) => {
-  firebaseReady = true;
-  if (user) {
-    currentUser = user;
-    try {
-      const snap = await db.ref(`users/${user.uid}`).once('value');
-      if (!snap.exists()) {
-        const profile = {
-          uid:user.uid, displayName:user.displayName||"Anonymous Dev",
-          email:user.email||"", photoURL:user.photoURL||"",
-          username:user.uid.substring(0,10),
-          bio:"Full Stack Developer | Open Source Enthusiast",
-          location:"Bangladesh", website:"", profession:"Software Developer",
-          phone:"", github:"", linkedin:"", twitter:"",
-          facebook:"", instagram:"", youtube:"",
-          skills:["JavaScript","React","Node.js"],
-          experience:[], education:[], projects:[], achievements:[],
-          joinedAt:Date.now(), isAdmin:false, isPublic:true,
-          verified:false, theme:"dark", profileViews:0,
-          followers:0, following:0, status:"active", coverPhoto:"",
-          showEmail:false, showPhone:false, showViews:true
-        };
-        await db.ref(`users/${user.uid}`).set(profile);
-        currentProfile = profile;
-      } else {
-        currentProfile = snap.val();
-        await db.ref(`users/${user.uid}`).update({lastSeen:Date.now()});
-      }
-      updateUIForLoggedIn(user);
-      loadHomeFeed();
-    } catch(e) {
-      console.error('Auth state error:', e);
-      showToast('Connection error: '+e.message, 'error');
-      hideLoader();
-    }
-  } else {
-    currentUser = null;
-    currentProfile = null;
-    updateUIForLoggedOut();
-    loadHeroPage();
-  }
-});
-
-/* AUTH */
-async function loginGoogle() {
-  try {
-    showLoader("Signing in with Google…");
-    const provider = new firebase.auth.GoogleAuthProvider();
-    await auth.signInWithPopup(provider);
-  } catch(e) { showToast("Login failed: "+e.message,"error"); hideLoader(); }
-}
-async function loginFacebook() {
-  try {
-    showLoader("Signing in with Facebook…");
-    const provider = new firebase.auth.FacebookAuthProvider();
-    await auth.signInWithPopup(provider);
-  } catch(e) { showToast("Login failed: "+e.message,"error"); hideLoader(); }
-}
-async function doLogout() { await auth.signOut(); showToast("Logged out.","success"); }
-
-/* DB HELPERS */
-async function dbGetAllUsers() {
-  const snap = await db.ref("users").once('value');
-  return snap.exists() ? snap.val() : {};
-}
-async function dbGetUser(uid) {
-  const snap = await db.ref(`users/${uid}`).once('value');
-  return snap.exists() ? snap.val() : null;
-}
-async function dbGetFollowsMap() {
-  if (!currentUser) return {};
-  const snap = await db.ref(`follows/${currentUser.uid}`).once('value');
-  return snap.exists() ? snap.val() : {};
-}
-async function dbIsFollowing(targetUid) {
-  if (!currentUser) return false;
-  const snap = await db.ref(`follows/${currentUser.uid}/${targetUid}`).once('value');
-  return snap.exists();
-}
-async function dbToggleFollow(targetUid) {
-  if (!currentUser) { showLoginModal(); return false; }
-  const myUid = currentUser.uid;
-  if (myUid === targetUid) return false;
-  const fSnap = await db.ref(`follows/${myUid}/${targetUid}`).once('value');
-  const tData = await dbGetUser(targetUid);
-  const mData = await dbGetUser(myUid);
-  if (!tData || !mData) return false;
-  if (fSnap.exists()) {
-    await db.ref(`follows/${myUid}/${targetUid}`).remove();
-    await db.ref(`users/${targetUid}`).update({followers: Math.max(0,(tData.followers||0)-1)});
-    await db.ref(`users/${myUid}`).update({following: Math.max(0,(mData.following||0)-1)});
-    showToast("Unfollowed.","info");
-    return false;
-  } else {
-    await db.ref(`follows/${myUid}/${targetUid}`).set({followedAt:Date.now()});
-    await db.ref(`users/${targetUid}`).update({followers:(tData.followers||0)+1});
-    await db.ref(`users/${myUid}`).update({following:(mData.following||0)+1});
-    showToast("Following! ✓","success");
-    return true;
-  }
-}
-async function dbSaveProfile(data) {
-  if (!currentUser) return;
-  try {
-    await db.ref(`users/${currentUser.uid}`).update(data);
-    currentProfile = {...currentProfile, ...data};
-    showToast("Profile updated ✓","success");
-    closeEditModal();
-    loadProfilePage(currentUser.uid);
-  } catch(e) { showToast("Save failed: "+e.message,"error"); }
-}
-
-/* ADMIN */
-async function adminToggleStatus(uid, cur) {
-  const s = cur==="active" ? "banned" : "active";
-  await db.ref(`users/${uid}`).update({status:s});
-  showToast(`User ${s}.`,"success"); loadAdminPanel();
-}
-async function adminDeleteUser(uid) {
-  if (!confirm("Delete this user permanently?")) return;
-  await db.ref(`users/${uid}`).remove();
-  showToast("Deleted.","success"); loadAdminPanel();
-}
-async function adminToggleVerify(uid, cur) {
-  await db.ref(`users/${uid}`).update({verified:!cur});
-  showToast("Verification updated.","success"); loadAdminPanel();
-}
-async function adminMakeAdmin(uid, cur) {
-  await db.ref(`users/${uid}`).update({isAdmin:!cur});
-  showToast("Admin status updated.","success"); loadAdminPanel();
-}
-async function adminSaveUser(uid) {
-  const gv=id=>document.getElementById(id)?.value||'';
-  const gc=id=>!!document.getElementById(id)?.checked;
-  await db.ref(`users/${uid}`).update({
-    displayName:gv('ae-name'), profession:gv('ae-prof'), bio:gv('ae-bio'),
-    location:gv('ae-loc'), status:gv('ae-status'),
-    isPublic:gc('ae-public'), verified:gc('ae-verified'), isAdmin:gc('ae-isadmin'),
-    updatedAt:Date.now()
-  });
-  showToast("Saved ✓","success");
-  document.getElementById('admin-edit-modal')?.remove();
-  loadAdminPanel();
-}
-async function adminOpenEdit(uid) {
-  const p = await dbGetUser(uid);
-  if (!p) return;
-  showAdminEditModal(uid, p);
-}
-async function loadAdminPanel() {
-  showLoader('Loading admin panel…');
-  try {
-    const users = await dbGetAllUsers();
-    renderAdminPanel(users);
-  } catch(e) { showToast('Failed to load admin.','error'); hideLoader(); }
-}
-</script>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>FaceForge v1 — Personal Profile</title>
+<meta name="description" content="FaceForge — a neon-glass personal profile feed powered by Firebase." />
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;700;800&family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#0a0a0f;--bg2:#0f0f1a;--panel:#16161f;--panel2:#1c1c28;--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);--accent:#7fff6e;--accent2:#4ef0c0;--accent3:#ff6eb4;--accent-glow:rgba(127,255,110,0.14);--text:#e8e8f0;--text2:#8888a8;--text3:#3e3e5a;--success:#7fff6e;--error:#ff4e6a;--warn:#ffd700;--shadow:rgba(0,0,0,0.55);--r:16px;--r-sm:10px;}
-[data-theme="light"]{--bg:#f0f0f5;--bg2:#e8e8f0;--panel:#ffffff;--panel2:#f5f5fa;--border:rgba(0,0,0,0.07);--border2:rgba(0,0,0,0.13);--accent:#2a8f00;--accent2:#0a7a5c;--accent3:#c2185b;--accent-glow:rgba(42,143,0,0.11);--text:#1a1a2e;--text2:#5a5a7a;--text3:#aaaabc;--shadow:rgba(0,0,0,0.10);}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-html{scroll-behavior:smooth;}
-body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden;transition:background .3s,color .3s;}
-::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-track{background:var(--bg2);}::-webkit-scrollbar-thumb{background:var(--text3);border-radius:3px;}
-.bg-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(127,255,110,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(127,255,110,.018) 1px,transparent 1px);background-size:48px 48px;animation:gridPan 40s linear infinite;}
-[data-theme="light"] .bg-grid{opacity:.5;}@keyframes gridPan{to{background-position:48px 48px;}}
-.bg-glow{position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse 60% 45% at 8% 8%,rgba(127,255,110,.045) 0%,transparent 70%),radial-gradient(ellipse 50% 40% at 92% 92%,rgba(78,240,192,.04) 0%,transparent 70%);}
-#cur{position:fixed;width:9px;height:9px;background:var(--accent);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);mix-blend-mode:screen;}
-#cur-ring{position:fixed;width:30px;height:30px;border:1.5px solid var(--accent);border-radius:50%;opacity:.35;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);}
-.navbar{position:sticky;top:0;z-index:1000;height:62px;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;background:rgba(10,10,15,.9);backdrop-filter:blur(22px);border-bottom:1px solid var(--border);}
-[data-theme="light"] .navbar{background:rgba(240,240,245,.9);}
-.nav-logo{display:flex;align-items:center;gap:10px;cursor:pointer;}
-.nav-logo-text{font-family:'Syne',sans-serif;font-size:1.35rem;font-weight:800;color:var(--text);}
-.nav-logo-text span{color:var(--accent);}
-.nav-badge{font-family:'Space Mono',monospace;font-size:.48rem;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);border:1px solid var(--border2);border-radius:4px;padding:2px 7px;}
-.nav-right{display:flex;align-items:center;gap:8px;}.nav-center{display:flex;align-items:center;gap:5px;}
-.nav-tab{padding:6px 14px;border-radius:100px;border:1px solid transparent;background:transparent;color:var(--text2);cursor:pointer;transition:all .2s;font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;display:flex;align-items:center;gap:6px;}
-.nav-tab:hover,.nav-tab.active{border-color:var(--border2);background:var(--panel);color:var(--accent);}
-@media(max-width:600px){.nav-center{display:none;}}
-.ibtn{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:1px solid var(--border2);background:var(--panel);color:var(--text2);cursor:pointer;transition:all .2s;font-size:.85rem;flex-shrink:0;}
-.ibtn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-glow);}
-.pbtn{display:flex;align-items:center;gap:7px;padding:7px 16px;border-radius:100px;border:1px solid var(--border2);background:var(--panel);color:var(--text2);cursor:pointer;transition:all .2s;font-family:'Space Mono',monospace;font-size:.63rem;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;}
-.pbtn:hover{border-color:var(--accent);color:var(--accent);}
-.prim{display:flex;align-items:center;gap:7px;padding:8px 20px;border-radius:100px;border:none;background:var(--accent);color:#051200;cursor:pointer;transition:all .2s;font-family:'Space Mono',monospace;font-size:.63rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;}
-[data-theme="light"] .prim{color:#fff;}.prim:hover{opacity:.85;transform:translateY(-1px);box-shadow:0 5px 22px var(--accent-glow);}
-.dbtn{display:flex;align-items:center;gap:7px;padding:7px 16px;border-radius:100px;border:1px solid rgba(255,78,106,.3);background:rgba(255,78,106,.08);color:var(--error);cursor:pointer;transition:all .2s;font-family:'Space Mono',monospace;font-size:.63rem;letter-spacing:.06em;text-transform:uppercase;}
-.dbtn:hover{background:rgba(255,78,106,.15);border-color:var(--error);}
-.user-menu{position:relative;}
-.av-trigger{display:flex;align-items:center;gap:9px;padding:4px 12px 4px 4px;border-radius:100px;border:1px solid var(--border2);background:var(--panel);cursor:pointer;transition:all .2s;}
-.av-trigger:hover{border-color:var(--accent);}
-.av-trigger img{width:28px;height:28px;border-radius:50%;object-fit:cover;border:2px solid var(--accent);}
-.av-trigger .uname{font-family:'Space Mono',monospace;font-size:.6rem;color:var(--text2);max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.av-trigger .chev{font-size:.55rem;color:var(--text3);transition:transform .2s;}
-.user-menu.open .chev{transform:rotate(180deg);}
-.dd{position:absolute;top:calc(100% + 10px);right:0;width:220px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:8px;z-index:999;box-shadow:0 18px 52px var(--shadow);display:none;animation:fadeD .2s ease;}
-.user-menu.open .dd{display:block;}@keyframes fadeD{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:none;}}
-.dd-head{padding:10px 12px 12px;border-bottom:1px solid var(--border);margin-bottom:6px;}
-.dd-head img{width:42px;height:42px;border-radius:50%;object-fit:cover;border:2px solid var(--accent);}
-.dd-head-name{font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;margin-top:7px;}
-.dd-head-email{font-family:'Space Mono',monospace;font-size:.54rem;color:var(--text3);margin-top:2px;}
-.dd-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.05em;text-transform:uppercase;color:var(--text2);cursor:pointer;transition:all .15s;border:none;background:transparent;width:100%;text-align:left;}
-.dd-item i{width:14px;text-align:center;font-size:.78rem;}.dd-item:hover{background:var(--panel2);color:var(--text);}
-.dd-item.red:hover{background:rgba(255,78,106,.1);color:var(--error);}
-.dd-sep{height:1px;background:var(--border);margin:4px 0;}
-.app{position:relative;z-index:1;min-height:calc(100vh - 62px);}
-/* FEED */
-.feed-wrap{max-width:1100px;margin:0 auto;padding:2rem 1rem 4rem;}
-.feed-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;}
-.feed-title{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;}
-.feed-title span{color:var(--accent);}
-.feed-search{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--border2);border-radius:100px;padding:8px 16px;min-width:220px;}
-.feed-search i{color:var(--text3);}
-.feed-search input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.88rem;}
-.feed-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:1.25rem;}
-@media(max-width:600px){.feed-grid{grid-template-columns:1fr 1fr;gap:.75rem;}}
-@media(max-width:380px){.feed-grid{grid-template-columns:1fr;}}
-/* USER CARD */
-.user-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;transition:all .25s;cursor:pointer;}
-.user-card:hover{border-color:var(--accent);transform:translateY(-4px);box-shadow:0 14px 40px var(--shadow);}
-.uc-cover{height:76px;background:linear-gradient(135deg,#13131f,#1c1c28);position:relative;overflow:hidden;}
-.uc-cover img{width:100%;height:100%;object-fit:cover;}
-.uc-cover-pat{position:absolute;inset:0;background:radial-gradient(circle at 30% 50%,rgba(127,255,110,.1) 0%,transparent 60%),radial-gradient(circle at 70% 20%,rgba(78,240,192,.08) 0%,transparent 50%);}
-.uc-body{padding:0 .9rem .9rem;}
-.uc-av-wrap{position:relative;margin-top:-22px;display:inline-block;margin-bottom:.35rem;}
-.uc-av{width:46px;height:46px;border-radius:50%;object-fit:cover;border:3px solid var(--panel);box-shadow:0 0 0 2px var(--accent);}
-.uc-verified{position:absolute;bottom:0;right:0;width:16px;height:16px;border-radius:50%;background:var(--accent);color:#051200;display:flex;align-items:center;justify-content:center;font-size:.42rem;border:1.5px solid var(--panel);}
-.uc-name{font-family:'Syne',sans-serif;font-size:.93rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.uc-prof{font-family:'Space Mono',monospace;font-size:.54rem;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.3rem;}
-.uc-bio{font-size:.76rem;color:var(--text2);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:.55rem;}
-.uc-stats{display:flex;gap:.9rem;margin-bottom:.55rem;}
-.uc-stat-val{font-family:'Syne',sans-serif;font-size:.82rem;font-weight:700;}
-.uc-stat-lbl{font-family:'Space Mono',monospace;font-size:.46rem;color:var(--text3);text-transform:uppercase;}
-.uc-footer{display:flex;gap:6px;align-items:center;}
-.follow-btn{flex:1;padding:6px 0;border-radius:100px;border:1px solid var(--accent);background:var(--accent-glow);color:var(--accent);cursor:pointer;transition:all .2s;font-family:'Space Mono',monospace;font-size:.56rem;letter-spacing:.06em;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:5px;}
-.follow-btn:hover{background:var(--accent);color:#051200;}
-.follow-btn.following{background:var(--panel2);border-color:var(--border2);color:var(--text3);}
-.follow-btn.following:hover{border-color:var(--error);color:var(--error);background:rgba(255,78,106,.08);}
-.view-btn{width:30px;height:30px;border-radius:50%;border:1px solid var(--border2);background:var(--panel2);color:var(--text2);cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;font-size:.72rem;flex-shrink:0;}
-.view-btn:hover{border-color:var(--accent2);color:var(--accent2);}
-/* HERO */
-.hero{min-height:calc(100vh - 62px);display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:2rem 1.5rem;}
-.hero-eyebrow{font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);margin-bottom:1.2rem;display:flex;align-items:center;gap:10px;}
-.hero-eyebrow::before,.hero-eyebrow::after{content:'';display:inline-block;width:28px;height:1px;background:var(--accent);}
-.hero-title{font-family:'Syne',sans-serif;font-size:clamp(2.4rem,7vw,5rem);font-weight:800;line-height:1.0;color:var(--text);margin-bottom:1rem;}
-.hero-title .hl{color:var(--accent);text-shadow:0 0 42px rgba(127,255,110,.28);}
-.hero-sub{font-size:1rem;color:var(--text2);max-width:460px;margin:0 auto 2rem;line-height:1.65;}
-.hero-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:3.5rem;}
-.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;max-width:720px;}
-@media(max-width:600px){.feat-grid{grid-template-columns:1fr;}}
-.feat-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r-sm);padding:1.25rem;text-align:left;transition:border-color .2s,transform .2s;}
-.feat-card:hover{border-color:var(--accent);transform:translateY(-3px);}
-.feat-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--accent-glow);border:1px solid rgba(127,255,110,.2);color:var(--accent);font-size:1rem;margin-bottom:12px;}
-.feat-title{font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;margin-bottom:5px;}
-.feat-desc{font-size:.78rem;color:var(--text2);line-height:1.45;}
-/* PROFILE */
-.cover-wrap{position:relative;}
-.cover-bg{width:100%;height:260px;display:block;background:linear-gradient(135deg,#13131f 0%,#1c1c28 55%,#0a0a0f 100%);}
-.cover-pattern{position:absolute;inset:0;background:radial-gradient(circle at 18% 50%,rgba(127,255,110,.06) 0%,transparent 50%),radial-gradient(circle at 82% 25%,rgba(78,240,192,.06) 0%,transparent 50%),linear-gradient(rgba(127,255,110,.012) 1px,transparent 1px),linear-gradient(90deg,rgba(127,255,110,.012) 1px,transparent 1px);background-size:auto,auto,32px 32px,32px 32px;}
-.cover-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,transparent 40%,rgba(10,10,15,.88) 100%);}
-[data-theme="light"] .cover-overlay{background:linear-gradient(to bottom,transparent 40%,rgba(240,240,245,.88) 100%);}
-.profile-wrap{max-width:1020px;margin:0 auto;padding:0 1rem 4rem;}
-.profile-header{background:var(--panel);border:1px solid var(--border2);border-radius:0 0 var(--r) var(--r);padding:0 1.5rem 1.5rem;margin-bottom:1.5rem;}
-.av-wrap{position:relative;margin-top:-52px;display:inline-block;}
-.prof-av{width:104px;height:104px;border-radius:50%;object-fit:cover;border:4px solid var(--panel);box-shadow:0 0 0 2.5px var(--accent),0 8px 32px var(--shadow);}
-.verified-dot{position:absolute;bottom:4px;right:4px;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#051200;display:flex;align-items:center;justify-content:center;font-size:.65rem;border:2.5px solid var(--panel);}
-.prof-top{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;}
-.prof-info{flex:1;min-width:200px;}
-.prof-name{font-family:'Syne',sans-serif;font-size:1.65rem;font-weight:800;line-height:1.1;color:var(--text);display:flex;align-items:center;gap:9px;flex-wrap:wrap;}
-.prof-handle{font-family:'Space Mono',monospace;font-size:.68rem;color:var(--text3);margin-top:3px;}
-.prof-handle span{color:var(--accent);}
-.prof-bio{font-size:.92rem;color:var(--text2);margin:9px 0;line-height:1.55;max-width:520px;}
-.prof-meta{display:flex;flex-wrap:wrap;gap:14px;margin-top:8px;}
-.meta-chip{display:flex;align-items:center;gap:6px;font-family:'Space Mono',monospace;font-size:.6rem;color:var(--text3);text-decoration:none;}
-.meta-chip i{color:var(--accent);width:12px;text-align:center;}.meta-chip:hover{color:var(--text2);}
-.prof-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding-top:4px;}
-.socials{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
-.soc-link{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:1px solid var(--border2);background:var(--panel2);color:var(--text2);text-decoration:none;font-size:.82rem;transition:all .2s;}
-.soc-link:hover{transform:translateY(-3px);}
-.soc-link.gh:hover{border-color:#fff;color:#fff;}.soc-link.li:hover{border-color:#0077b5;color:#0077b5;}.soc-link.tw:hover{border-color:#1da1f2;color:#1da1f2;}.soc-link.fb:hover{border-color:#1877f2;color:#1877f2;}.soc-link.ig:hover{border-color:#e1306c;color:#e1306c;}.soc-link.yt:hover{border-color:#ff0000;color:#ff0000;}.soc-link.wb:hover{border-color:var(--accent);color:var(--accent);}
-.stats-bar{display:flex;gap:2rem;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);flex-wrap:wrap;}
-.stat-item{display:flex;flex-direction:column;align-items:center;}
-.stat-val{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:700;color:var(--accent);}
-.stat-lbl{font-family:'Space Mono',monospace;font-size:.54rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);}
-.url-bar{display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--border2);border-radius:100px;padding:7px 16px;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--text3);margin-top:10px;flex-wrap:wrap;}
-.url-bar i{color:var(--accent);}.url-bar span{color:var(--accent2);word-break:break-all;}
-.copy-btn{padding:3px 11px;border-radius:100px;background:var(--accent-glow);border:1px solid rgba(127,255,110,.22);color:var(--accent);font-family:'Space Mono',monospace;font-size:.54rem;cursor:pointer;transition:all .2s;white-space:nowrap;}
-.copy-btn:hover{background:var(--accent);color:#051200;}
-.content-grid{display:grid;grid-template-columns:1fr 2fr;gap:1.25rem;}@media(max-width:700px){.content-grid{grid-template-columns:1fr;}}
-.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:1.3rem;margin-bottom:1.25rem;}
-.card-hd{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;color:var(--text);margin-bottom:1rem;display:flex;align-items:center;gap:9px;}
-.card-hd i{color:var(--accent);font-size:.88rem;width:16px;text-align:center;}
-.skill-wrap{display:flex;flex-wrap:wrap;gap:6px;}
-.skill-tag{font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;padding:5px 13px;border-radius:100px;border:1px solid var(--border2);background:var(--panel2);color:var(--text2);transition:all .2s;cursor:default;}
-.skill-tag:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-glow);}
-.timeline{position:relative;padding-left:22px;}
-.timeline::before{content:'';position:absolute;left:6px;top:5px;bottom:5px;width:1px;background:var(--border2);}
-.tl-item{position:relative;margin-bottom:1.3rem;}.tl-item:last-child{margin-bottom:0;}
-.tl-item::before{content:'';position:absolute;left:-19px;top:5px;width:9px;height:9px;border-radius:50%;background:var(--accent);border:2px solid var(--panel);box-shadow:0 0 8px var(--accent);}
-.tl-title{font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;}
-.tl-sub{font-size:.8rem;color:var(--text2);margin-top:2px;display:flex;align-items:center;gap:5px;}
-.tl-sub i{font-size:.7rem;color:var(--accent);}
-.tl-date{font-family:'Space Mono',monospace;font-size:.57rem;color:var(--text3);margin-top:4px;}
-.tl-desc{font-size:.8rem;color:var(--text2);margin-top:6px;line-height:1.5;}
-.proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;}
-.proj-card{background:var(--panel2);border:1px solid var(--border);border-radius:var(--r-sm);padding:1.1rem;transition:all .22s;cursor:pointer;}
-.proj-card:hover{border-color:var(--accent);transform:translateY(-3px);box-shadow:0 10px 32px var(--shadow);}
-.proj-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--accent-glow);border:1px solid rgba(127,255,110,.2);color:var(--accent);font-size:1.1rem;margin-bottom:10px;}
-.proj-title{font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;margin-bottom:5px;}
-.proj-desc{font-size:.77rem;color:var(--text2);line-height:1.4;margin-bottom:10px;}
-.proj-tags{display:flex;flex-wrap:wrap;gap:4px;}
-.proj-tag{font-family:'Space Mono',monospace;font-size:.53rem;padding:3px 9px;border-radius:100px;background:var(--accent-glow);color:var(--accent);border:1px solid rgba(127,255,110,.18);}
-.proj-link{margin-top:10px;display:flex;align-items:center;gap:5px;font-family:'Space Mono',monospace;font-size:.58rem;color:var(--text3);text-transform:uppercase;transition:color .2s;}
-.proj-link:hover{color:var(--accent);}
-.qr-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;}
-#qr-mini canvas,#qr-mini img{border-radius:10px;border:1px solid var(--border2);}
-.qr-url{font-family:'Space Mono',monospace;font-size:.56rem;color:var(--text3);word-break:break-all;text-align:center;}
-.ach-wrap{display:flex;flex-wrap:wrap;gap:7px;}
-.ach-badge{display:flex;align-items:center;gap:6px;padding:5px 13px;border-radius:100px;background:var(--panel2);border:1px solid var(--border2);font-family:'Space Mono',monospace;font-size:.58rem;color:var(--text2);}
-.ach-badge i{color:var(--warn);}
-.act-item{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
-.act-item:last-child{border-bottom:none;}
-.act-icon{width:34px;height:34px;border-radius:50%;flex-shrink:0;background:var(--accent-glow);border:1px solid rgba(127,255,110,.2);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:.78rem;}
-.act-text{font-size:.82rem;color:var(--text2);line-height:1.45;}
-.act-time{font-family:'Space Mono',monospace;font-size:.55rem;color:var(--text3);margin-top:3px;}
-/* MODALS */
-.overlay{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);display:none;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto;}
-.overlay.open{display:flex;}
-.modal{background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:1.75rem;width:100%;max-width:560px;position:relative;margin:auto;}
-.modal-x{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;border:1px solid var(--border2);background:var(--panel2);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.85rem;transition:all .2s;}
-.modal-x:hover{border-color:var(--error);color:var(--error);}
-.modal-title{font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:800;margin-bottom:1.25rem;}
-.modal-title span{color:var(--accent);}
-.edit-modal{max-width:600px;}
-.etabs{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:1.2rem;}
-.etab{padding:6px 13px;border-radius:100px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;transition:all .2s;font-family:'Space Mono',monospace;font-size:.57rem;letter-spacing:.05em;text-transform:uppercase;}
-.etab.active{border-color:var(--accent);background:var(--accent-glow);color:var(--accent);}
-.etab-pane{display:none;}.etab-pane.active{display:block;}
-.fg{display:flex;flex-direction:column;gap:5px;margin-bottom:.85rem;}.fg:last-child{margin-bottom:0;}
-.flabel{font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);display:flex;align-items:center;gap:5px;}
-.flabel i{color:var(--accent);width:12px;text-align:center;}
-.finput,.ftarea,.fsel{width:100%;padding:10px 14px;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.88rem;transition:border-color .2s,box-shadow .2s;outline:none;}
-.finput:focus,.ftarea:focus,.fsel:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow);}
-.ftarea{resize:vertical;min-height:80px;}.fsel{cursor:pointer;}
-.frow{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}@media(max-width:500px){.frow{grid-template-columns:1fr;}}
-.fsec{font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:1.2rem 0 .7rem;padding-bottom:.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
-.tags-wrap{display:flex;flex-wrap:wrap;gap:6px;padding:8px;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;min-height:46px;cursor:text;}
-.tags-wrap:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow);}
-.tag-chip{display:flex;align-items:center;gap:5px;padding:3px 10px;border-radius:100px;background:var(--accent-glow);border:1px solid rgba(127,255,110,.2);font-family:'Space Mono',monospace;font-size:.6rem;color:var(--accent);}
-.tag-chip button{background:none;border:none;color:var(--accent);cursor:pointer;font-size:.7rem;padding:0;line-height:1;}
-.tag-input{background:transparent;border:none;outline:none;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.84rem;min-width:80px;flex:1;}
-.tag-hint{font-family:'Space Mono',monospace;font-size:.54rem;color:var(--text3);margin-top:4px;}
-.tog-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);}
-.tog-row:last-child{border-bottom:none;}
-.tog-info{display:flex;flex-direction:column;gap:2px;}
-.tog-label{font-size:.85rem;color:var(--text);}.tog-desc{font-size:.74rem;color:var(--text3);}
-.tog{position:relative;width:46px;height:25px;cursor:pointer;flex-shrink:0;}
-.tog input{opacity:0;width:0;height:0;}
-.tog-sl{position:absolute;inset:0;background:var(--panel2);border-radius:100px;border:1px solid var(--border2);transition:all .2s;}
-.tog-sl::before{content:'';position:absolute;width:17px;height:17px;border-radius:50%;background:var(--text3);top:3px;left:3px;transition:all .2s;}
-.tog input:checked+.tog-sl{background:var(--accent);border-color:var(--accent);}
-.tog input:checked+.tog-sl::before{transform:translateX(21px);background:#051200;}
-.dyn-item{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:.9rem;margin-bottom:.7rem;}
-.dyn-item-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:.55rem;}
-.dyn-item-lbl{font-family:'Space Mono',monospace;font-size:.58rem;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;}
-.login-card{max-width:380px;text-align:center;}
-.login-icon-wrap{width:64px;height:64px;border-radius:20px;margin:0 auto 1rem;background:var(--accent-glow);border:1px solid rgba(127,255,110,.25);display:flex;align-items:center;justify-content:center;font-size:1.8rem;color:var(--accent);}
-.login-btn{width:100%;padding:12px 20px;border-radius:100px;border:1px solid var(--border2);background:var(--panel2);color:var(--text);cursor:pointer;transition:all .2s;font-family:'Space Mono',monospace;font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:.75rem;}
-.login-btn:hover{background:var(--panel);}
-.login-btn.google:hover{border-color:#4285f4;color:#4285f4;}
-.login-btn.facebook:hover{border-color:#1877f2;color:#1877f2;}
-.login-note{font-family:'Space Mono',monospace;font-size:.54rem;color:var(--text3);margin-top:1rem;line-height:1.6;}
-.login-note a{color:var(--accent);text-decoration:none;}
-.admin-login-icon{width:60px;height:60px;border-radius:18px;margin:0 auto 1rem;background:rgba(255,110,180,.1);border:1px solid rgba(255,110,180,.25);display:flex;align-items:center;justify-content:center;font-size:1.6rem;color:var(--accent3);}
-.admin-err{display:none;color:var(--error);font-family:'Space Mono',monospace;font-size:.6rem;margin-top:.6rem;padding:8px 12px;border-radius:8px;background:rgba(255,78,106,.08);border:1px solid rgba(255,78,106,.2);}
-.tc{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;}
-.toast{display:flex;align-items:center;gap:10px;padding:11px 18px;border-radius:100px;background:var(--panel);border:1px solid var(--border2);font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.04em;color:var(--text);box-shadow:0 8px 32px var(--shadow);animation:tIn .3s ease;max-width:320px;}
-@keyframes tIn{from{opacity:0;transform:translateX(18px);}to{opacity:1;transform:none;}}
-.toast.success{border-color:var(--success);}.toast.error{border-color:var(--error);}.toast.info{border-color:var(--accent2);}
-.toast i.success-i{color:var(--success);}.toast i.error-i{color:var(--error);}.toast i.info-i{color:var(--accent2);}
-.ldr{position:fixed;inset:0;z-index:3000;background:rgba(10,10,15,.88);backdrop-filter:blur(10px);display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;}
-.ldr.open{display:flex;}
-.ldr-ring{width:50px;height:50px;border-radius:50%;border:3px solid var(--border2);border-top-color:var(--accent);animation:spin .75s linear infinite;}
-@keyframes spin{to{transform:rotate(360deg);}}
-.ldr-text{font-family:'Space Mono',monospace;font-size:.62rem;color:var(--text2);letter-spacing:.1em;text-transform:uppercase;}
-/* ADMIN */
-.admin-wrap{max-width:1100px;margin:0 auto;padding:2rem 1rem 4rem;}
-.admin-hd{font-family:'Syne',sans-serif;font-size:1.8rem;font-weight:800;margin-bottom:.4rem;}
-.admin-hd span{color:var(--accent3);}
-.admin-sub{font-family:'Space Mono',monospace;font-size:.6rem;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:1.5rem;}
-.admin-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;margin-bottom:1.5rem;}
-.admin-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r-sm);padding:1.1rem 1.3rem;position:relative;overflow:hidden;}
-.admin-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent);}
-.admin-card-val{font-family:'Syne',sans-serif;font-size:1.7rem;font-weight:700;color:var(--accent);}
-.admin-card-lbl{font-family:'Space Mono',monospace;font-size:.54rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-top:2px;}
-.admin-card-icon{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:1.5rem;color:var(--text3);opacity:.4;}
-.admin-table-wrap{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
-.admin-top{padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-.admin-srch{flex:1;min-width:160px;display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--border2);border-radius:100px;padding:7px 14px;}
-.admin-srch i{color:var(--text3);font-size:.8rem;}
-.admin-srch input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.84rem;}
-.admin-table{width:100%;border-collapse:collapse;}
-.admin-table th{font-family:'Space Mono',monospace;font-size:.54rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);padding:10px 16px;text-align:left;border-bottom:1px solid var(--border);background:var(--bg2);}
-.admin-table td{padding:11px 16px;border-bottom:1px solid var(--border);font-size:.84rem;vertical-align:middle;}
-.admin-table tr:hover td{background:var(--panel2);}
-.admin-table tr:last-child td{border-bottom:none;}
-.sbadge{font-family:'Space Mono',monospace;font-size:.53rem;padding:3px 10px;border-radius:100px;text-transform:uppercase;letter-spacing:.06em;}
-.sbadge.active{background:rgba(127,255,110,.1);color:var(--accent);border:1px solid rgba(127,255,110,.22);}
-.sbadge.banned{background:rgba(255,78,106,.1);color:var(--error);border:1px solid rgba(255,78,106,.22);}
-.sbadge.admin-s{background:rgba(255,215,0,.1);color:var(--warn);border:1px solid rgba(255,215,0,.22);}
-.abtns{display:flex;gap:5px;flex-wrap:wrap;}
-.abtn{font-family:'Space Mono',monospace;font-size:.52rem;padding:4px 10px;border-radius:100px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;transition:all .15s;letter-spacing:.04em;text-transform:uppercase;display:flex;align-items:center;gap:4px;}
-.abtn:hover{background:var(--panel2);color:var(--text);}
-.abtn.ban:hover{border-color:var(--error);color:var(--error);}
-.abtn.vfy:hover{border-color:var(--accent);color:var(--accent);}
-.abtn.del:hover{border-color:var(--error);color:var(--error);background:rgba(255,78,106,.08);}
-.abtn.prom:hover{border-color:var(--warn);color:var(--warn);}
-.abtn.eu:hover{border-color:var(--accent2);color:var(--accent2);}
-footer{background:var(--bg2);border-top:1px solid var(--border);padding:1.75rem 1.5rem;position:relative;z-index:1;}
-.footer-in{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;}
-.footer-logo{font-family:'Syne',sans-serif;font-size:1.05rem;font-weight:800;}
-.footer-logo span{color:var(--accent);}
-.footer-links{display:flex;gap:18px;flex-wrap:wrap;}
-.flink{font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);cursor:pointer;transition:color .2s;}
-.flink:hover{color:var(--accent);}
-.admin-flink{display:flex;align-items:center;gap:6px;font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);cursor:pointer;transition:all .2s;padding:6px 14px;border-radius:100px;border:1px dashed var(--border2);}
-.admin-flink:hover{color:var(--accent3);border-color:var(--accent3);}
-.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;text-align:center;gap:8px;}
-.empty i{font-size:2rem;color:var(--text3);}.empty p{font-size:.82rem;color:var(--text3);}
-@media(max-width:480px){.cover-bg{height:180px;}.prof-av{width:84px;height:84px;}.prof-name{font-size:1.3rem;}.navbar{padding:0 1rem;}.modal{padding:1.25rem;}.stats-bar{gap:1.2rem;}}
+:root, [data-theme="dark"]{
+  --bg:#0a0a0f; --panel:#16161f; --panel2:#1c1c28;
+  --accent:#7fff6e; --accent2:#4ef0c0;
+  --text:#e8e8f0; --text2:#8888a8;
+  --border:rgba(255,255,255,.07); --danger:#ff5577;
+}
+[data-theme="light"]{
+  --bg:#f5f5f0; --panel:#ffffff; --panel2:#f0efe9;
+  --accent:#2e8b00; --accent2:#0f9d7a;
+  --text:#1a1a2e; --text2:#5a5a78;
+  --border:rgba(0,0,0,.08); --danger:#d33860;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--text);font-family:'DM Sans',system-ui,sans-serif;margin:0;min-height:100%}
+h1,h2,h3,.font-syne{font-family:'Syne',sans-serif;letter-spacing:-.02em}
+.font-mono{font-family:'Space Mono',monospace}
+a{color:inherit}
+
+/* Animated grid background */
+.bg-grid{position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background-image:
+    linear-gradient(var(--border) 1px,transparent 1px),
+    linear-gradient(90deg,var(--border) 1px,transparent 1px);
+  background-size:42px 42px;
+  mask-image:radial-gradient(ellipse 80% 60% at 50% 0%,#000 30%,transparent 80%);
+  animation:gridmove 24s linear infinite;
+}
+@keyframes gridmove{from{background-position:0 0,0 0}to{background-position:42px 42px,42px 42px}}
+
+/* Custom cursor */
+#cursor{position:fixed;width:18px;height:18px;border:1px solid var(--accent);border-radius:50%;
+  pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .15s,height .15s,background .15s;
+  mix-blend-mode:difference}
+#cursor.hover{width:36px;height:36px;background:color-mix(in oklab,var(--accent) 25%,transparent)}
+@media (pointer:coarse){#cursor{display:none}}
+
+/* Glass panels */
+.panel{background:color-mix(in oklab,var(--panel) 88%,transparent);
+  border:1px solid var(--border);border-radius:18px;backdrop-filter:blur(14px) saturate(140%);
+  box-shadow:0 8px 30px rgba(0,0,0,.25)}
+.panel2{background:var(--panel2);border:1px solid var(--border);border-radius:14px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
+  font-family:'Space Mono',monospace;font-size:11px;border:1px solid var(--border);background:var(--panel2);color:var(--text2)}
+.chip .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent)}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:9px 14px;border-radius:10px;
+  font-family:'Space Mono',monospace;font-size:12px;border:1px solid var(--border);background:var(--panel2);color:var(--text);cursor:pointer;transition:.2s}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn-primary{background:var(--accent);color:#0a0a0f;border-color:transparent;font-weight:700}
+.btn-primary:hover{filter:brightness(1.1);color:#0a0a0f}
+.btn-danger{color:var(--danger);border-color:color-mix(in oklab,var(--danger) 40%,transparent)}
+.input{width:100%;padding:11px 14px;border-radius:12px;background:var(--panel2);border:1px solid var(--border);color:var(--text);font-family:'DM Sans',sans-serif;outline:none;transition:.2s}
+.input:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in oklab,var(--accent) 18%,transparent)}
+
+/* Nav */
+.navwrap{position:sticky;top:0;z-index:50;backdrop-filter:blur(18px);
+  background:color-mix(in oklab,var(--bg) 78%,transparent);border-bottom:1px solid var(--border)}
+.brand{font-family:'Syne',sans-serif;font-weight:800;font-size:22px;letter-spacing:-.03em}
+.brand span{color:var(--accent);font-family:'Space Mono',monospace;font-size:12px;margin-left:4px;vertical-align:super}
+
+/* Profile header */
+.cover{position:relative;height:230px;border-radius:18px;overflow:hidden;
+  background:radial-gradient(80% 120% at 30% 0%,color-mix(in oklab,var(--accent) 30%,transparent),transparent 60%),
+             linear-gradient(135deg,var(--panel2),var(--panel));
+  border:1px solid var(--border)}
+.cover::after{content:"";position:absolute;inset:0;
+  background:repeating-linear-gradient(0deg,transparent 0 22px,color-mix(in oklab,var(--accent) 8%,transparent) 22px 23px);
+  mix-blend-mode:overlay;pointer-events:none}
+.avatar-xl{width:128px;height:128px;border-radius:50%;border:4px solid var(--bg);outline:2px solid var(--accent);
+  background:var(--panel2);object-fit:cover;
+  box-shadow:0 0 0 4px color-mix(in oklab,var(--accent) 30%,transparent);
+  animation:pulseRing 3s ease-in-out infinite}
+@keyframes pulseRing{0%,100%{box-shadow:0 0 0 4px color-mix(in oklab,var(--accent) 30%,transparent)}50%{box-shadow:0 0 0 10px color-mix(in oklab,var(--accent) 8%,transparent)}}
+
+/* Post slide-in */
+@keyframes slideUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.post{animation:slideUp .35s ease-out both}
+
+/* Skeleton loader */
+.lb-loading{position:relative;overflow:hidden;background:var(--panel2);border-radius:12px}
+.lb-loading::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,color-mix(in oklab,var(--accent) 12%,transparent),transparent);
+  animation:flicker 1.4s infinite}
+@keyframes flicker{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+
+/* Dropdown */
+.dd{position:absolute;right:0;top:calc(100% + 8px);min-width:220px;border-radius:14px;
+  background:var(--panel);border:1px solid var(--border);box-shadow:0 20px 40px rgba(0,0,0,.4);padding:6px;display:none;z-index:60}
+.dd.open{display:block;animation:slideUp .18s ease-out both}
+.dd-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;cursor:pointer;font-size:14px}
+.dd-item:hover{background:var(--panel2)}
+.dd-item.danger{color:var(--danger)}
+
+/* Auth overlay */
+.auth-overlay{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;
+  background:color-mix(in oklab,var(--bg) 70%,transparent);backdrop-filter:blur(20px)}
+.auth-overlay.show{display:flex}
+.auth-btn{display:inline-flex;align-items:center;gap:12px;padding:14px 22px;border-radius:14px;
+  background:var(--accent);color:#0a0a0f;font-weight:700;font-family:'Space Mono',monospace;border:none;cursor:pointer;
+  box-shadow:0 0 30px color-mix(in oklab,var(--accent) 50%,transparent);transition:.2s}
+.auth-btn:hover{transform:translateY(-2px)}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--panel2);border-radius:10px}
+::-webkit-scrollbar-thumb:hover{background:color-mix(in oklab,var(--accent) 40%,var(--panel2))}
+
+/* Grid */
+.layout{display:grid;grid-template-columns:260px minmax(0,1fr) 300px;gap:20px;padding:20px;max-width:1400px;margin:0 auto}
+@media (max-width:1100px){.layout{grid-template-columns:1fr}.side{display:none}}
+
+.stat{display:flex;flex-direction:column;gap:2px;padding:14px;border-radius:12px;background:var(--panel2);border:1px solid var(--border)}
+.stat .n{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:var(--accent)}
+.stat .l{font-family:'Space Mono',monospace;font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.1em}
 </style>
 </head>
 <body>
-<div id="cur"></div><div id="cur-ring"></div>
-<div class="bg-grid"></div><div class="bg-glow"></div>
-<div class="tc" id="tc"></div>
-<div class="ldr" id="ldr"><div class="ldr-ring"></div><div class="ldr-text" id="ldr-txt">Loading…</div></div>
-<nav class="navbar">
-  <div class="nav-logo" onclick="navigateHome()"><span class="nav-logo-text">Dev<span>Card</span></span><span class="nav-badge">Social</span></div>
-  <div class="nav-center" id="nav-tabs" style="display:none;">
-    <button class="nav-tab active" id="tab-home" onclick="switchTab('home')"><i class="fas fa-house"></i> Home</button>
-    <button class="nav-tab" id="tab-explore" onclick="switchTab('explore')"><i class="fas fa-compass"></i> Explore</button>
-  </div>
-  <div class="nav-right">
-    <button class="ibtn" onclick="toggleTheme()"><i class="fas fa-moon" id="theme-icon"></i></button>
-    <div id="nav-out" style="display:flex;gap:8px;align-items:center;">
-      <button class="pbtn" onclick="showLoginModal()"><i class="fas fa-sign-in-alt"></i> Sign In</button>
-      <button class="prim" onclick="showLoginModal()"><i class="fas fa-rocket"></i> Get Started</button>
-    </div>
-    <div id="nav-in" style="display:none;">
-      <div class="user-menu" id="umenu">
-        <div class="av-trigger" onclick="toggleMenu()"><img id="nav-av" src="" alt=""><span class="uname" id="nav-uname">User</span><i class="fas fa-chevron-down chev"></i></div>
-        <div class="dd">
-          <div class="dd-head"><img id="dd-av" src="" alt=""><div class="dd-head-name" id="dd-name">—</div><div class="dd-head-email" id="dd-email">—</div></div>
-          <button class="dd-item" onclick="goToMyProfile()"><i class="fas fa-user"></i> My Profile</button>
-          <button class="dd-item" onclick="openEditModal()"><i class="fas fa-pen"></i> Edit Profile</button>
-          <button class="dd-item" onclick="shareProfile()"><i class="fas fa-share-nodes"></i> Share</button>
-          <button class="dd-item" onclick="showQRModal(myProfileUrl())"><i class="fas fa-qrcode"></i> QR Code</button>
-          <div class="dd-sep"></div>
-          <button class="dd-item red" onclick="doLogout()"><i class="fas fa-right-from-bracket"></i> Sign Out</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</nav>
-<main class="app" id="main"></main>
-<footer>
-  <div class="footer-in">
-    <div><div class="footer-logo">Dev<span>Card</span></div><div style="font-family:'Space Mono',monospace;font-size:.52rem;color:var(--text3);margin-top:3px;">© 2025 · Social Portfolio Network</div></div>
-    <div class="footer-links">
-      <span class="flink" onclick="navigateHome()"><i class="fas fa-house" style="margin-right:4px;"></i>Home</span>
-      <span class="flink"><i class="fas fa-shield-halved" style="margin-right:4px;"></i>Privacy</span>
-    </div>
-    <button class="admin-flink" onclick="showAdminLogin()"><i class="fas fa-lock"></i> Admin Panel</button>
-  </div>
-</footer>
-<!-- LOGIN -->
-<div class="overlay" id="login-modal">
-  <div class="modal login-card">
-    <button class="modal-x" onclick="closeLoginModal()"><i class="fas fa-xmark"></i></button>
-    <div class="login-icon-wrap"><i class="fas fa-bolt"></i></div>
-    <div class="modal-title" style="text-align:center;">Welcome to <span>DevCard</span></div>
-    <p style="font-size:.84rem;color:var(--text2);text-align:center;margin-bottom:1.75rem;line-height:1.55;">Create your portfolio, follow developers, grow your network.</p>
-    <button class="login-btn google" onclick="loginGoogle()">
-      <svg width="18" height="18" viewBox="0 0 18 18" style="flex-shrink:0;"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 002.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 01-7.18-2.54H1.83v2.07A8 8 0 008.98 17z"/><path fill="#FBBC05" d="M4.5 10.52a4.8 4.8 0 010-3.04V5.41H1.83a8 8 0 000 7.18l2.67-2.07z"/><path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 001.83 5.4L4.5 7.49a4.77 4.77 0 014.48-3.31z"/></svg>
+<div class="bg-grid"></div>
+<div id="cursor"></div>
+
+<!-- AUTH OVERLAY -->
+<div id="authOverlay" class="auth-overlay">
+  <div class="panel p-10 max-w-md w-[92%] text-center">
+    <div class="brand mb-2">FaceForge<span>v1</span></div>
+    <h2 class="text-2xl mt-2 mb-2">Sign in to your forge</h2>
+    <p class="text-sm mb-6" style="color:var(--text2)">Neon-glass social. Realtime feed. Forged for you.</p>
+    <button id="googleLogin" class="auth-btn">
+      <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.9 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.3 6.1 29.4 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.2-.1-2.3-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 16 19 13 24 13c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.3 7.1 29.4 5 24 5 16.3 5 9.6 9 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.3 0 10.1-2 13.7-5.3l-6.3-5.3C29.4 35 26.8 36 24 36c-5.3 0-9.7-3.1-11.3-7.5l-6.5 5C9.4 39.9 16.1 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.7l6.3 5.3C41.6 35.9 44 30.4 44 24c0-1.2-.1-2.3-.4-3.5z"/></svg>
       Continue with Google
     </button>
-    <button class="login-btn facebook" onclick="loginFacebook()"><i class="fab fa-facebook" style="color:#1877f2;font-size:1.05rem;flex-shrink:0;"></i>Continue with Facebook</button>
-    <p class="login-note">By signing in you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.</p>
+    <p class="font-mono text-[10px] mt-6" style="color:var(--text2)">By signing in you agree to forge responsibly.</p>
   </div>
 </div>
-<!-- ADMIN LOGIN -->
-<div class="overlay" id="admin-login-modal">
-  <div class="modal" style="max-width:400px;text-align:center;">
-    <button class="modal-x" onclick="closeAdminLogin()"><i class="fas fa-xmark"></i></button>
-    <div class="admin-login-icon"><i class="fas fa-shield-halved"></i></div>
-    <div class="modal-title" style="text-align:center;">Admin <span style="color:var(--accent3);">Panel</span></div>
-    <p style="font-size:.82rem;color:var(--text2);margin-bottom:1.5rem;">Enter admin credentials to access the control panel.</p>
-    <div class="fg" style="text-align:left;"><label class="flabel"><i class="fas fa-user"></i>Username</label><input class="finput" id="adm-user" placeholder="admin" autocomplete="username"></div>
-    <div class="fg" style="text-align:left;margin-top:.6rem;"><label class="flabel"><i class="fas fa-lock"></i>Password</label><input class="finput" id="adm-pass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doAdminLogin()"></div>
-    <div class="admin-err" id="adm-err"><i class="fas fa-triangle-exclamation" style="margin-right:5px;"></i>Incorrect username or password.</div>
-    <button class="prim" onclick="doAdminLogin()" style="width:100%;justify-content:center;margin-top:1.1rem;padding:12px;"><i class="fas fa-unlock"></i> Access Admin Panel</button>
-  </div>
-</div>
-<!-- EDIT PROFILE -->
-<div class="overlay" id="edit-modal">
-  <div class="modal edit-modal">
-    <button class="modal-x" onclick="closeEditModal()"><i class="fas fa-xmark"></i></button>
-    <div class="modal-title"><i class="fas fa-pen" style="color:var(--accent);margin-right:8px;"></i>Edit <span>Profile</span></div>
-    <div class="etabs">
-      <button class="etab active" onclick="swETab('basic',this)"><i class="fas fa-user" style="margin-right:4px;"></i>Basic</button>
-      <button class="etab" onclick="swETab('social',this)"><i class="fab fa-share-nodes" style="margin-right:4px;"></i>Social</button>
-      <button class="etab" onclick="swETab('skills',this)"><i class="fas fa-code" style="margin-right:4px;"></i>Skills</button>
-      <button class="etab" onclick="swETab('work',this)"><i class="fas fa-briefcase" style="margin-right:4px;"></i>Work</button>
-      <button class="etab" onclick="swETab('projects',this)"><i class="fas fa-rocket" style="margin-right:4px;"></i>Projects</button>
-      <button class="etab" onclick="swETab('privacy',this)"><i class="fas fa-lock" style="margin-right:4px;"></i>Privacy</button>
+
+<!-- TOP NAV -->
+<header class="navwrap">
+  <div class="max-w-[1400px] mx-auto flex items-center gap-4 px-5 py-3">
+    <div class="brand">FaceForge<span>v1</span></div>
+    <div class="flex-1 max-w-md mx-4 hidden md:block">
+      <input id="searchInput" class="input" placeholder="Search the forge…" />
     </div>
-    <div class="etab-pane active" id="ep-basic">
-      <div class="frow"><div class="fg"><label class="flabel"><i class="fas fa-user"></i>Full Name</label><input class="finput" id="ep-name" placeholder="Your full name"></div><div class="fg"><label class="flabel"><i class="fas fa-briefcase"></i>Profession</label><input class="finput" id="ep-prof" placeholder="Full Stack Developer"></div></div>
-      <div class="fg"><label class="flabel"><i class="fas fa-align-left"></i>Bio</label><textarea class="ftarea" id="ep-bio" placeholder="Tell the world about yourself…"></textarea></div>
-      <div class="frow"><div class="fg"><label class="flabel"><i class="fas fa-location-dot"></i>Location</label><input class="finput" id="ep-loc" placeholder="City, Country"></div><div class="fg"><label class="flabel"><i class="fas fa-phone"></i>Phone</label><input class="finput" id="ep-phone" placeholder="+880 ..."></div></div>
-      <div class="fg"><label class="flabel"><i class="fas fa-globe"></i>Website</label><input class="finput" id="ep-web" placeholder="https://yoursite.com"></div>
-      <div class="frow"><div class="fg"><label class="flabel"><i class="fas fa-image"></i>Profile Photo URL</label><input class="finput" id="ep-photo" placeholder="https://…/avatar.jpg"></div><div class="fg"><label class="flabel"><i class="fas fa-panorama"></i>Cover Photo URL</label><input class="finput" id="ep-cover" placeholder="https://…/cover.jpg"></div></div>
-    </div>
-    <div class="etab-pane" id="ep-social">
-      <div class="fg"><label class="flabel"><i class="fab fa-github"></i>GitHub username</label><input class="finput" id="ep-github" placeholder="username"></div>
-      <div class="fg"><label class="flabel"><i class="fab fa-linkedin-in"></i>LinkedIn username</label><input class="finput" id="ep-linkedin" placeholder="username"></div>
-      <div class="fg"><label class="flabel"><i class="fab fa-x-twitter"></i>Twitter/X username</label><input class="finput" id="ep-twitter" placeholder="username"></div>
-      <div class="fg"><label class="flabel"><i class="fab fa-facebook-f"></i>Facebook</label><input class="finput" id="ep-fb" placeholder="username or URL"></div>
-      <div class="fg"><label class="flabel"><i class="fab fa-instagram"></i>Instagram username</label><input class="finput" id="ep-ig" placeholder="username"></div>
-      <div class="fg"><label class="flabel"><i class="fab fa-youtube"></i>YouTube</label><input class="finput" id="ep-yt" placeholder="channel URL or @handle"></div>
-    </div>
-    <div class="etab-pane" id="ep-skills">
-      <div class="fg"><label class="flabel"><i class="fas fa-code"></i>Skills</label><div class="tags-wrap" id="skills-tags" onclick="document.getElementById('skill-inp').focus()"></div><div class="tag-hint"><i class="fas fa-circle-info" style="color:var(--accent2);margin-right:4px;"></i>Type a skill and press <strong>Enter</strong> or comma to add. Click × to remove.</div></div>
-    </div>
-    <div class="etab-pane" id="ep-work">
-      <div class="fsec"><i class="fas fa-briefcase"></i>Work Experience</div><div id="exp-list"></div>
-      <button class="pbtn" onclick="addExp()" style="margin-top:.5rem;"><i class="fas fa-plus"></i> Add Experience</button>
-      <div class="fsec" style="margin-top:1.5rem;"><i class="fas fa-graduation-cap"></i>Education</div><div id="edu-list"></div>
-      <button class="pbtn" onclick="addEdu()" style="margin-top:.5rem;"><i class="fas fa-plus"></i> Add Education</button>
-    </div>
-    <div class="etab-pane" id="ep-projects"><div id="proj-list"></div><button class="pbtn" onclick="addProj()" style="margin-top:.5rem;"><i class="fas fa-plus"></i> Add Project</button></div>
-    <div class="etab-pane" id="ep-privacy">
-      <div class="tog-row"><div class="tog-info"><div class="tog-label">Public Profile</div><div class="tog-desc">Anyone can view your profile</div></div><label class="tog"><input type="checkbox" id="ep-public" checked><span class="tog-sl"></span></label></div>
-      <div class="tog-row"><div class="tog-info"><div class="tog-label">Show Email</div><div class="tog-desc">Display email on profile</div></div><label class="tog"><input type="checkbox" id="ep-showemail"><span class="tog-sl"></span></label></div>
-      <div class="tog-row"><div class="tog-info"><div class="tog-label">Show Phone</div><div class="tog-desc">Display phone on profile</div></div><label class="tog"><input type="checkbox" id="ep-showphone"><span class="tog-sl"></span></label></div>
-      <div class="tog-row"><div class="tog-info"><div class="tog-label">Show Profile Views</div><div class="tog-desc">Let others see your view count</div></div><label class="tog"><input type="checkbox" id="ep-views" checked><span class="tog-sl"></span></label></div>
-      <div class="fsec" style="margin-top:1rem;"><i class="fas fa-palette"></i>Theme</div>
-      <div class="fg"><label class="flabel"><i class="fas fa-circle-half-stroke"></i>Color Mode</label><select class="fsel" id="ep-theme"><option value="dark">🌙 Dark Mode</option><option value="light">☀️ Light Mode</option></select></div>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border);">
-      <button class="prim" onclick="submitEdit()" style="flex:1;justify-content:center;"><i class="fas fa-check"></i> Save Changes</button>
-      <button class="pbtn" onclick="closeEditModal()"><i class="fas fa-xmark"></i> Cancel</button>
+    <button id="themeToggle" class="btn" title="Toggle theme">
+      <span id="themeIcon">◐</span><span class="hidden sm:inline" id="themeLabel">Light</span>
+    </button>
+    <div class="relative">
+      <button id="userBtn" class="btn !p-1.5 !pr-3 flex items-center gap-2">
+        <img id="userAvatar" src="https://api.dicebear.com/7.x/identicon/svg?seed=guest" class="w-7 h-7 rounded-full" />
+        <span id="userName" class="font-mono text-xs">Guest</span>
+        <span class="text-xs opacity-60">▾</span>
+      </button>
+      <div id="userDropdown" class="dd">
+        <div class="dd-item"><span>👤</span><span>View profile</span></div>
+        <div class="dd-item"><span>⚙️</span><span>Settings</span></div>
+        <div class="dd-item danger" id="logoutBtn"><span>⎋</span><span>Sign out</span></div>
+      </div>
     </div>
   </div>
-</div>
-<script>
-let theme=localStorage.getItem('dc-theme')||'dark';
-document.documentElement.setAttribute('data-theme',theme);
-const cur=document.getElementById('cur'),curR=document.getElementById('cur-ring');
-let rx=0,ry=0;
-document.addEventListener('mousemove',e=>{cur.style.left=e.clientX+'px';cur.style.top=e.clientY+'px';});
-setInterval(()=>{const cx=parseFloat(cur.style.left)||0,cy=parseFloat(cur.style.top)||0;rx+=(cx-rx)*.14;ry+=(cy-ry)*.14;curR.style.left=rx+'px';curR.style.top=ry+'px';},16);
+</header>
 
-function showToast(msg,type='info'){const t=document.createElement('div');const ic=type==='success'?'circle-check':type==='error'?'circle-xmark':'circle-info';t.className=`toast ${type}`;t.innerHTML=`<i class="fas fa-${ic} ${type}-i"></i>${msg}`;document.getElementById('tc').appendChild(t);setTimeout(()=>t.remove(),3500);}
-function showLoader(txt='Loading…'){document.getElementById('ldr-txt').textContent=txt;document.getElementById('ldr').classList.add('open');}
-function hideLoader(){document.getElementById('ldr').classList.remove('open');}
-function syncIcon(){document.getElementById('theme-icon').className=`fas fa-${theme==='dark'?'moon':'sun'}`;}
-function toggleTheme(){theme=theme==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',theme);localStorage.setItem('dc-theme',theme);syncIcon();}
-syncIcon();
+<!-- LAYOUT -->
+<main class="layout">
 
-function toggleMenu(){document.getElementById('umenu').classList.toggle('open');}
-function closeMenu(){document.getElementById('umenu').classList.remove('open');}
-document.addEventListener('click',e=>{if(!document.getElementById('umenu')?.contains(e.target))closeMenu();});
-
-function updateUIForLoggedIn(user){
-  const photo=user.photoURL||`https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName||'U')}&size=40&background=7fff6e&color=051200`;
-  ['nav-av','dd-av'].forEach(id=>document.getElementById(id).src=photo);
-  document.getElementById('nav-uname').textContent=user.displayName||'User';
-  document.getElementById('dd-name').textContent=user.displayName||'User';
-  document.getElementById('dd-email').textContent=user.email||'';
-  document.getElementById('nav-out').style.display='none';
-  document.getElementById('nav-in').style.display='block';
-  document.getElementById('nav-tabs').style.display='flex';
-  hideLoader();
-}
-function updateUIForLoggedOut(){
-  document.getElementById('nav-out').style.display='flex';
-  document.getElementById('nav-in').style.display='none';
-  document.getElementById('nav-tabs').style.display='none';
-}
-
-function switchTab(tab){
-  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
-  document.getElementById('tab-'+tab)?.classList.add('active');
-  if(tab==='home') loadHomeFeed();
-  else loadExploreFeed();
-}
-function navigateHome(){window.location.hash='';currentUser?loadHomeFeed():loadHeroPage();}
-function goToMyProfile(){if(!currentUser)return;window.location.hash=`#/u/${currentUser.uid}`;closeMenu();}
-function loadHomeFeed(){if(!currentUser){loadHeroPage();return;}showLoader('Loading feed…');loadExploreFeed();}
-function myProfileUrl(){return currentUser?`${location.origin}${location.pathname}#/u/${currentUser.uid}`:'';}
-
-function loadHeroPage(){
-  document.getElementById('main').innerHTML=`<div class="hero">
-    <div class="hero-eyebrow">Developer Social Network</div>
-    <h1 class="hero-title">Connect, Share &<br><span class="hl">Grow Together</span></h1>
-    <p class="hero-sub">DevCard is a social portfolio platform for developers. Build your profile, follow other devs, and showcase your work to the world.</p>
-    <div class="hero-btns"><button class="prim" onclick="showLoginModal()" style="padding:13px 30px;font-size:.75rem;"><i class="fas fa-rocket"></i> Join DevCard — Free</button></div>
-    <div class="feat-grid">
-      <div class="feat-card"><div class="feat-icon"><i class="fas fa-users"></i></div><div class="feat-title">Follow Developers</div><div class="feat-desc">Discover and follow talented developers from around the world.</div></div>
-      <div class="feat-card"><div class="feat-icon"><i class="fas fa-bolt"></i></div><div class="feat-title">Realtime Updates</div><div class="feat-desc">Firebase-powered — changes sync instantly across all devices.</div></div>
-      <div class="feat-card"><div class="feat-icon"><i class="fas fa-palette"></i></div><div class="feat-title">Custom Themes</div><div class="feat-desc">Toggle dark/light mode and personalize your developer card.</div></div>
+  <!-- LEFT SIDEBAR -->
+  <aside class="side flex flex-col gap-4">
+    <div class="panel p-4">
+      <div class="flex items-center gap-3">
+        <img id="sideAvatar" src="https://api.dicebear.com/7.x/identicon/svg?seed=guest" class="w-11 h-11 rounded-full" style="outline:2px solid var(--accent);outline-offset:2px"/>
+        <div>
+          <div id="sideName" class="font-syne font-bold">Guest</div>
+          <div class="font-mono text-[10px]" style="color:var(--text2)">@unforged</div>
+        </div>
+      </div>
+      <p class="text-sm mt-3" style="color:var(--text2)">Forging stories, one post at a time. Welcome to your neon corner of the web.</p>
     </div>
-  </div>`;
-}
+    <div class="panel p-2">
+      <div class="dd-item"><span>🌐</span><span>My Feed</span><span class="ml-auto chip">42</span></div>
+      <div class="dd-item"><span>👥</span><span>Friends List</span><span class="ml-auto chip">128</span></div>
+      <div class="dd-item"><span>🔖</span><span>Saved Posts</span><span class="ml-auto chip">9</span></div>
+      <div class="dd-item"><span>📸</span><span>Photos</span></div>
+      <div class="dd-item"><span>🎬</span><span>Videos</span></div>
+    </div>
+    <div class="panel p-4">
+      <div class="font-mono text-[10px] mb-2" style="color:var(--text2)">SHORTCUTS</div>
+      <div class="flex flex-wrap gap-2">
+        <span class="chip"><span class="dot"></span>#neon</span>
+        <span class="chip"><span class="dot"></span>#forge</span>
+        <span class="chip"><span class="dot"></span>#firebase</span>
+      </div>
+    </div>
+  </aside>
 
-async function loadExploreFeed(){
-  try{
-    const[users, followMap] = await Promise.all([dbGetAllUsers(), dbGetFollowsMap()]);
-    const myUid = currentUser?.uid;
-    const list = Object.entries(users).filter(([,u])=>u.isPublic!==false&&u.status!=='banned');
-    if(list.length===0){
-      document.getElementById('main').innerHTML=`<div class="feed-wrap"><div class="empty" style="margin-top:4rem;"><i class="fas fa-users"></i><p>No users found yet. Be the first!</p></div></div>`;
-      hideLoader(); return;
-    }
-    const cards=list.map(([uid,u])=>{
-      const isF=!!followMap[uid], isSelf=uid===myUid;
-      const photo=u.photoURL||`https://ui-avatars.com/api/?name=${encodeURIComponent(u.displayName||'?')}&size=60&background=7fff6e&color=051200`;
-      return `<div class="user-card" onclick="viewProfile('${uid}')">
-        <div class="uc-cover">${u.coverPhoto?`<img src="${u.coverPhoto}" alt="">`:'<div class="uc-cover-pat"></div>'}</div>
-        <div class="uc-body">
-          <div class="uc-av-wrap"><img class="uc-av" src="${photo}" alt="">${u.verified?'<div class="uc-verified"><i class="fas fa-check"></i></div>':''}</div>
-          <div class="uc-name">${u.displayName||'Anonymous Dev'}</div>
-          <div class="uc-prof">${u.profession||'Developer'}</div>
-          <div class="uc-bio">${u.bio||'Passionate developer building cool things.'}</div>
-          <div class="uc-stats">
-            <div class="uc-stat"><div class="uc-stat-val">${(u.followers||0).toLocaleString()}</div><div class="uc-stat-lbl">Followers</div></div>
-            <div class="uc-stat"><div class="uc-stat-val">${(u.following||0).toLocaleString()}</div><div class="uc-stat-lbl">Following</div></div>
-            <div class="uc-stat"><div class="uc-stat-val">${(u.projects||[]).length}</div><div class="uc-stat-lbl">Projects</div></div>
-          </div>
-          <div class="uc-footer">
-            ${isSelf
-              ?`<button class="follow-btn" style="border-color:var(--accent2);color:var(--accent2);background:rgba(78,240,192,.1);" onclick="event.stopPropagation();openEditModal()"><i class="fas fa-pen"></i> Edit Profile</button>`
-              :`<button class="follow-btn ${isF?'following':''}" onclick="event.stopPropagation();handleFollowCard('${uid}',this)"><i class="fas fa-${isF?'user-check':'user-plus'}"></i> ${isF?'Following':'Follow'}</button>`
-            }
-            <button class="view-btn" onclick="event.stopPropagation();viewProfile('${uid}')"><i class="fas fa-arrow-up-right-from-square"></i></button>
+  <!-- CENTER -->
+  <section class="flex flex-col gap-5 min-w-0">
+    <!-- Profile header -->
+    <div class="panel p-5">
+      <div class="cover"></div>
+      <div class="flex flex-col md:flex-row md:items-end gap-4 -mt-16 px-2">
+        <img id="profileAvatar" class="avatar-xl" src="https://api.dicebear.com/7.x/identicon/svg?seed=guest"/>
+        <div class="flex-1">
+          <h1 id="profileName" class="text-3xl md:text-4xl font-syne font-extrabold mt-2">Welcome to FaceForge</h1>
+          <div class="flex flex-wrap gap-2 mt-2">
+            <span class="chip"><span class="dot"></span>Online</span>
+            <span class="chip">forged · v1.0</span>
+            <span class="chip" id="profileEmail">guest@faceforge.dev</span>
           </div>
         </div>
-      </div>`;
+        <button class="btn-primary btn">+ Add to Story</button>
+      </div>
+    </div>
+
+    <!-- Create post -->
+    <div class="panel p-4">
+      <div class="flex gap-3">
+        <img id="composerAvatar" class="w-10 h-10 rounded-full" src="https://api.dicebear.com/7.x/identicon/svg?seed=guest"/>
+        <div class="flex-1 flex flex-col gap-2">
+          <textarea id="postContent" class="input resize-none" rows="2" placeholder="What's forging today?"></textarea>
+          <input id="postImage" class="input" placeholder="Optional image URL…"/>
+          <div class="flex justify-between items-center">
+            <div class="flex gap-2">
+              <span class="chip">📷 Photo</span>
+              <span class="chip">🎥 Video</span>
+              <span class="chip">😊 Feeling</span>
+            </div>
+            <button id="postBtn" class="btn btn-primary">Forge Post</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feed -->
+    <div id="feed" class="flex flex-col gap-4">
+      <div class="panel p-5 lb-loading" style="height:140px"></div>
+      <div class="panel p-5 lb-loading" style="height:200px"></div>
+    </div>
+  </section>
+
+  <!-- RIGHT SIDEBAR -->
+  <aside class="side flex flex-col gap-4">
+    <div class="panel p-4">
+      <div class="grid grid-cols-2 gap-2">
+        <div class="stat"><span class="n" id="statPosts">0</span><span class="l">Posts</span></div>
+        <div class="stat"><span class="n">128</span><span class="l">Friends</span></div>
+        <div class="stat"><span class="n" id="statLikes">0</span><span class="l">Likes</span></div>
+        <div class="stat"><span class="n">12</span><span class="l">Streak</span></div>
+      </div>
+    </div>
+    <div class="panel p-4">
+      <div class="flex items-center justify-between mb-3">
+        <div class="font-syne font-bold">Online Friends</div>
+        <span class="chip"><span class="dot"></span>5</span>
+      </div>
+      <div class="flex flex-col gap-2" id="onlineFriends"></div>
+    </div>
+    <div class="panel p-4">
+      <div class="font-syne font-bold mb-3">Recent Notifications</div>
+      <div class="flex flex-col gap-2 text-sm" id="notifs">
+        <div class="panel2 p-2 text-xs"><span style="color:var(--accent)">●</span> Someone liked your post.</div>
+        <div class="panel2 p-2 text-xs"><span style="color:var(--accent)">●</span> New comment on your post.</div>
+        <div class="panel2 p-2 text-xs" style="color:var(--text2)">Welcome to FaceForge v1.</div>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<footer class="text-center py-8 font-mono text-[10px]" style="color:var(--text2)">
+  FaceForge v1 · forged with Firebase + neon
+</footer>
+
+<!-- ============== FIREBASE + APP LOGIC ============== -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import { getDatabase, ref, set, get, push, onValue, remove, update, serverTimestamp, child, onChildAdded }
+  from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+
+// ============================================================
+// 🔧 REPLACE WITH YOUR FIREBASE CONFIG
+// Get it from: Firebase Console → Project Settings → Your apps → Web
+// ============================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyA_vr4EXR57ap2CRxlS1JpK6wHqIwlU8Rc",
+  authDomain: "devcard-6b634.firebaseapp.com",
+  databaseURL: "https://devcard-6b634-default-rtdb.firebaseio.com",
+  projectId: "devcard-6b634",
+  storageBucket: "devcard-6b634.firebasestorage.app",
+  messagingSenderId: "754891867884",
+  appId: "1:754891867884:web:f6ff7e2f8d2fcf8ae147c9",
+  measurementId: "G-C3P4HVH0C0"
+};
+// ============================================================
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app);
+const provider = new GoogleAuthProvider();
+
+let currentUser = null;
+
+/* ---------- THEME ---------- */
+const themeToggle = document.getElementById('themeToggle');
+const themeIcon = document.getElementById('themeIcon');
+const themeLabel = document.getElementById('themeLabel');
+const savedTheme = localStorage.getItem('ff-theme') || 'dark';
+document.documentElement.dataset.theme = savedTheme;
+syncThemeBtn();
+themeToggle.addEventListener('click', () => {
+  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = next;
+  localStorage.setItem('ff-theme', next);
+  syncThemeBtn();
+});
+function syncThemeBtn(){
+  const dark = document.documentElement.dataset.theme === 'dark';
+  themeIcon.textContent = dark ? '☾' : '☀';
+  themeLabel.textContent = dark ? 'Light' : 'Dark';
+}
+
+/* ---------- CURSOR ---------- */
+const cursor = document.getElementById('cursor');
+let cx=0,cy=0,tx=0,ty=0;
+addEventListener('mousemove', e=>{tx=e.clientX;ty=e.clientY});
+(function loop(){cx+=(tx-cx)*.2;cy+=(ty-cy)*.2;cursor.style.left=cx+'px';cursor.style.top=cy+'px';requestAnimationFrame(loop)})();
+document.addEventListener('mouseover', e=>{if(e.target.closest('button,a,.dd-item,.chip,input,textarea')) cursor.classList.add('hover'); else cursor.classList.remove('hover')});
+
+/* ---------- DROPDOWN ---------- */
+const userBtn = document.getElementById('userBtn');
+const userDropdown = document.getElementById('userDropdown');
+userBtn.addEventListener('click', e=>{e.stopPropagation();userDropdown.classList.toggle('open')});
+document.addEventListener('click', ()=>userDropdown.classList.remove('open'));
+
+/* ---------- AUTH ---------- */
+const overlay = document.getElementById('authOverlay');
+document.getElementById('googleLogin').addEventListener('click', async ()=>{
+  try { await signInWithPopup(auth, provider); }
+  catch(err){ alert('Login failed: ' + err.message); }
+});
+document.getElementById('logoutBtn').addEventListener('click', ()=>signOut(auth));
+
+onAuthStateChanged(auth, async (user)=>{
+  currentUser = user;
+  if(!user){
+    overlay.classList.add('show');
+    setUserUI({displayName:'Guest', email:'guest@faceforge.dev', photoURL:'https://api.dicebear.com/7.x/identicon/svg?seed=guest'});
+    return;
+  }
+  overlay.classList.remove('show');
+  setUserUI(user);
+  // Write user profile
+  try {
+    await set(ref(db, `users/${user.uid}`), {
+      uid: user.uid,
+      displayName: user.displayName,
+      email: user.email,
+      photoURL: user.photoURL,
+      lastSeen: serverTimestamp()
     });
-    document.getElementById('main').innerHTML=`<div class="feed-wrap">
-      <div class="feed-header">
-        <div class="feed-title"><i class="fas fa-users" style="color:var(--accent);margin-right:8px;"></i>Discover <span>Developers</span></div>
-        <div class="feed-search"><i class="fas fa-magnifying-glass"></i><input type="text" placeholder="Search developers…" oninput="filterFeed(this.value)"></div>
-      </div>
-      <div class="feed-grid" id="feed-grid">${cards.join('')}</div>
-    </div>`;
-    hideLoader();
-  }catch(e){
-    console.error('loadExploreFeed error:',e);
-    showToast('Failed to load users: '+e.message,'error');
-    hideLoader();
-  }
-}
-
-function filterFeed(q){const l=q.toLowerCase();document.querySelectorAll('#feed-grid .user-card').forEach(c=>{c.style.display=c.textContent.toLowerCase().includes(l)?'':'none';});}
-
-function viewProfile(uid){
-  window.location.hash=`#/u/${uid}`;
-  showLoader('Loading profile…');
-  loadProfilePage(uid);
-}
-
-async function loadProfilePage(uid){
-  try{
-    const p = await dbGetUser(uid);
-    if(!p){showToast('Profile not found.','error');hideLoader();return;}
-    if(currentUser&&currentUser.uid!==uid){
-      db.ref(`users/${uid}`).update({profileViews:(p.profileViews||0)+1}).catch(()=>{});
-    }
-    renderProfile(p,uid);
-    hideLoader();
-  }catch(e){
-    console.error('loadProfilePage error:',e);
-    showToast('Failed to load profile.','error');
-    hideLoader();
-  }
-}
-
-async function handleFollowCard(uid,btn){
-  if(!currentUser){showLoginModal();return;}
-  btn.disabled=true;
-  const result = await dbToggleFollow(uid);
-  const f = await dbIsFollowing(uid);
-  btn.className=`follow-btn${f?' following':''}`;
-  btn.innerHTML=`<i class="fas fa-${f?'user-check':'user-plus'}"></i> ${f?'Following':'Follow'}`;
-  btn.disabled=false;
-}
-
-function renderProfile(p,uid){
-  const isOwn=currentUser&&currentUser.uid===uid;
-  const profileUrl=`${location.origin}${location.pathname}#/u/${uid}`;
-  const photo=p.photoURL||`https://ui-avatars.com/api/?name=${encodeURIComponent(p.displayName||'User')}&size=200&background=7fff6e&color=051200`;
-  const skillsHtml=(p.skills||[]).length?p.skills.map(s=>`<span class="skill-tag">${s}</span>`).join(''):`<div class="empty"><i class="fas fa-code"></i><p>No skills yet.</p></div>`;
-  const tli=(e,t,s,ic)=>`<div class="tl-item"><div class="tl-title">${t}</div><div class="tl-sub"><i class="fas fa-${ic}"></i>${s}</div><div class="tl-date"><i class="fas fa-calendar"></i>${e.date||''}</div>${e.desc?`<div class="tl-desc">${e.desc}</div>`:''}</div>`;
-  const expHtml=(p.experience||[]).length?p.experience.map(e=>tli(e,e.title||'',e.company||'','building')).join(''):`<div class="empty"><i class="fas fa-briefcase"></i><p>No experience yet.</p></div>`;
-  const eduHtml=(p.education||[]).length?p.education.map(e=>tli(e,e.degree||'',e.institution||'','university')).join(''):`<div class="empty"><i class="fas fa-graduation-cap"></i><p>No education yet.</p></div>`;
-  const projHtml=(p.projects||[]).length?`<div class="proj-grid">${p.projects.map(pr=>`<div class="proj-card" onclick="${pr.url?`window.open('${pr.url}','_blank')`:''}"><div class="proj-icon"><i class="fas fa-${pr.icon||'rocket'}"></i></div><div class="proj-title">${pr.title||'Untitled'}</div><div class="proj-desc">${pr.desc||''}</div><div class="proj-tags">${(pr.tags||[]).map(t=>`<span class="proj-tag">${t}</span>`).join('')}</div>${pr.url?`<div class="proj-link"><i class="fas fa-arrow-up-right-from-square"></i>View</div>`:''}</div>`).join('')}</div>`:`<div class="empty"><i class="fas fa-rocket"></i><p>No projects yet.</p></div>`;
-  const soc=(u,h,c,i)=>u?`<a href="${h}" target="_blank" class="soc-link ${c}"><i class="${i}"></i></a>`:'';
-  const socialHtml=`<div class="socials">
-    ${soc(p.github,`https://github.com/${p.github}`,'gh','fab fa-github')}
-    ${soc(p.linkedin,`https://linkedin.com/in/${p.linkedin}`,'li','fab fa-linkedin-in')}
-    ${soc(p.twitter,`https://twitter.com/${p.twitter}`,'tw','fab fa-x-twitter')}
-    ${p.facebook?`<a href="${p.facebook.startsWith('http')?p.facebook:'https://facebook.com/'+p.facebook}" target="_blank" class="soc-link fb"><i class="fab fa-facebook-f"></i></a>`:''}
-    ${soc(p.instagram,`https://instagram.com/${p.instagram}`,'ig','fab fa-instagram')}
-    ${p.youtube?`<a href="${p.youtube.startsWith('http')?p.youtube:'https://youtube.com/'+p.youtube}" target="_blank" class="soc-link yt"><i class="fab fa-youtube"></i></a>`:''}
-    ${p.website?`<a href="${p.website}" target="_blank" class="soc-link wb"><i class="fas fa-globe"></i></a>`:''}
-  </div>`;
-  const achHtml=(p.achievements||[]).length?`<div class="card"><div class="card-hd"><i class="fas fa-trophy"></i> Achievements</div><div class="ach-wrap">${p.achievements.map(a=>`<span class="ach-badge"><i class="fas fa-trophy"></i>${a}</span>`).join('')}</div></div>`:'';
-
-  document.getElementById('main').innerHTML=`
-  <div class="cover-wrap"><div class="cover-bg" ${p.coverPhoto?`style="background:url('${p.coverPhoto}') center/cover no-repeat"`:''}>
-    ${!p.coverPhoto?'<div class="cover-pattern"></div>':''}</div><div class="cover-overlay"></div></div>
-  <div class="profile-wrap">
-    <div style="margin-bottom:.75rem;"><button class="pbtn" onclick="navigateHome()"><i class="fas fa-arrow-left"></i> Back to Feed</button></div>
-    <div class="profile-header">
-      <div class="prof-top">
-        <div style="display:flex;gap:1.2rem;align-items:flex-end;flex-wrap:wrap;">
-          <div class="av-wrap"><img class="prof-av" src="${photo}" alt="">${p.verified?'<div class="verified-dot"><i class="fas fa-check"></i></div>':''}</div>
-          <div class="prof-info">
-            <div class="prof-name">${p.displayName||'Anonymous Dev'}${p.verified?'<i class="fas fa-circle-check" style="color:var(--accent);font-size:.9rem;"></i>':''}</div>
-            <div class="prof-handle">@<span>${p.username||uid.substring(0,10)}</span> · <i class="fas fa-code" style="color:var(--accent);font-size:.6rem;"></i> ${p.profession||'Developer'}</div>
-            <div class="prof-bio">${p.bio||'Passionate developer building cool things.'}</div>
-            <div class="prof-meta">
-              ${p.location?`<span class="meta-chip"><i class="fas fa-location-dot"></i>${p.location}</span>`:''}
-              ${p.website?`<a class="meta-chip" href="${p.website}" target="_blank"><i class="fas fa-globe"></i>${p.website.replace(/https?:\/\//,'')}</a>`:''}
-              <span class="meta-chip"><i class="fas fa-calendar-days"></i>Joined ${new Date(p.joinedAt||Date.now()).toLocaleDateString('en-US',{month:'short',year:'numeric'})}</span>
-              ${p.showViews!==false&&p.profileViews?`<span class="meta-chip"><i class="fas fa-eye"></i>${(p.profileViews||0).toLocaleString()} views</span>`:''}
-              ${p.showEmail&&p.email?`<span class="meta-chip"><i class="fas fa-envelope"></i>${p.email}</span>`:''}
-            </div>${socialHtml}
-          </div>
-        </div>
-        <div class="prof-actions">
-          ${isOwn
-            ?`<button class="prim" onclick="openEditModal()"><i class="fas fa-pen"></i> Edit Profile</button><button class="pbtn" onclick="shareProfile()"><i class="fas fa-share-nodes"></i> Share</button>`
-            :`<button class="prim" id="prof-follow-btn" onclick="profileFollowToggle('${uid}')"><i class="fas fa-user-plus"></i> Follow</button><button class="pbtn" onclick="copyUrl('${profileUrl}')"><i class="fas fa-share-nodes"></i> Share</button>`
-          }
-        </div>
-      </div>
-      <div class="url-bar"><i class="fas fa-link"></i><span>${profileUrl}</span>
-        <button class="copy-btn" onclick="copyUrl('${profileUrl}')"><i class="fas fa-copy"></i> Copy</button>
-        <button class="copy-btn" onclick="showQRModal('${profileUrl}')"><i class="fas fa-qrcode"></i> QR</button>
-      </div>
-      <div class="stats-bar">
-        <div class="stat-item"><div class="stat-val" id="pf-fol">${(p.followers||0).toLocaleString()}</div><div class="stat-lbl"><i class="fas fa-users" style="margin-right:3px;"></i>Followers</div></div>
-        <div class="stat-item"><div class="stat-val">${(p.following||0).toLocaleString()}</div><div class="stat-lbl"><i class="fas fa-user-check" style="margin-right:3px;"></i>Following</div></div>
-        <div class="stat-item"><div class="stat-val">${(p.projects||[]).length}</div><div class="stat-lbl"><i class="fas fa-rocket" style="margin-right:3px;"></i>Projects</div></div>
-        <div class="stat-item"><div class="stat-val">${(p.skills||[]).length}</div><div class="stat-lbl"><i class="fas fa-code" style="margin-right:3px;"></i>Skills</div></div>
-        <div class="stat-item"><div class="stat-val">${(p.profileViews||0).toLocaleString()}</div><div class="stat-lbl"><i class="fas fa-eye" style="margin-right:3px;"></i>Views</div></div>
-      </div>
-    </div>
-    <div class="content-grid">
-      <div>
-        <div class="card"><div class="card-hd"><i class="fas fa-code"></i> Skills</div><div class="skill-wrap">${skillsHtml}</div></div>
-        <div class="card"><div class="card-hd"><i class="fas fa-graduation-cap"></i> Education</div><div class="timeline">${eduHtml}</div></div>
-        <div class="card"><div class="card-hd"><i class="fas fa-qrcode"></i> QR Code</div>
-          <div class="qr-wrap"><div id="qr-mini"></div><div class="qr-url">${profileUrl}</div>
-          <button class="copy-btn" onclick="showQRModal('${profileUrl}')"><i class="fas fa-expand"></i> Enlarge</button></div>
-        </div>${achHtml}
-      </div>
-      <div>
-        <div class="card"><div class="card-hd"><i class="fas fa-briefcase"></i> Work Experience</div><div class="timeline">${expHtml}</div></div>
-        <div class="card"><div class="card-hd"><i class="fas fa-rocket"></i> Projects</div>${projHtml}</div>
-        <div class="card"><div class="card-hd"><i class="fas fa-bolt"></i> Activity</div>
-          <div class="act-item"><div class="act-icon"><i class="fas fa-user-plus"></i></div><div><div class="act-text">Joined DevCard</div><div class="act-time">${new Date(p.joinedAt||Date.now()).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</div></div></div>
-          ${(p.projects||[]).length?`<div class="act-item"><div class="act-icon"><i class="fas fa-code-commit"></i></div><div><div class="act-text">Added ${(p.projects||[]).length} project(s)</div><div class="act-time">Recently</div></div></div>`:''}
-        </div>
-      </div>
-    </div>
-  </div>`;
-
-  if(!isOwn&&currentUser){dbIsFollowing(uid).then(f=>{const btn=document.getElementById('prof-follow-btn');if(btn&&f){btn.innerHTML='<i class="fas fa-user-check"></i> Following';btn.style.cssText='background:var(--panel2);border:1px solid var(--border2);color:var(--text2);';}});}
-  setTimeout(()=>{const el=document.getElementById('qr-mini');if(el){el.innerHTML='';new QRCode(el,{text:profileUrl,width:120,height:120,colorDark:theme==='dark'?'#7fff6e':'#2a8f00',colorLight:theme==='dark'?'#13131f':'#ffffff',correctLevel:QRCode.CorrectLevel.H});}},200);
-}
-
-async function profileFollowToggle(uid){
-  if(!currentUser){showLoginModal();return;}
-  const btn=document.getElementById('prof-follow-btn');if(btn)btn.disabled=true;
-  await dbToggleFollow(uid);
-  const f=await dbIsFollowing(uid);
-  if(btn){btn.disabled=false;if(f){btn.innerHTML='<i class="fas fa-user-check"></i> Following';btn.style.cssText='background:var(--panel2);border:1px solid var(--border2);color:var(--text2);';}else{btn.innerHTML='<i class="fas fa-user-plus"></i> Follow';btn.style.cssText='';}}
-  const snap=await db.ref(`users/${uid}`).once('value');
-  if(snap.exists()){const el=document.getElementById('pf-fol');if(el)el.textContent=(snap.val().followers||0).toLocaleString();}
-}
-
-function showQRModal(url){
-  document.getElementById('qr-modal-el')?.remove();
-  const w=document.createElement('div');w.id='qr-modal-el';w.className='overlay open';
-  w.innerHTML=`<div class="modal" style="max-width:320px;text-align:center;"><button class="modal-x" onclick="document.getElementById('qr-modal-el').remove()"><i class="fas fa-xmark"></i></button><div class="modal-title"><i class="fas fa-qrcode" style="color:var(--accent);margin-right:8px;"></i><span>QR Code</span></div><div id="qr-large" style="display:inline-block;border-radius:12px;overflow:hidden;margin:1rem 0;border:1px solid var(--border2);"></div><div class="qr-url" style="margin-bottom:1rem;">${url}</div><div style="display:flex;gap:8px;justify-content:center;"><button class="pbtn" onclick="copyUrl('${url}')"><i class="fas fa-copy"></i> Copy</button><button class="prim" onclick="downloadQR()"><i class="fas fa-download"></i> Download</button></div></div>`;
-  document.body.appendChild(w);w.addEventListener('click',e=>{if(e.target===w)w.remove();});
-  setTimeout(()=>{new QRCode(document.getElementById('qr-large'),{text:url,width:200,height:200,colorDark:theme==='dark'?'#7fff6e':'#2a8f00',colorLight:theme==='dark'?'#13131f':'#ffffff',correctLevel:QRCode.CorrectLevel.H});},100);
-}
-function downloadQR(){const c=document.querySelector('#qr-large canvas');if(!c){showToast('Not ready.','error');return;}const a=document.createElement('a');a.download='qr-code.png';a.href=c.toDataURL();a.click();showToast('Downloaded!','success');}
-function copyUrl(url){navigator.clipboard.writeText(url).then(()=>showToast('Copied ✓','success'));}
-function shareProfile(){if(!currentUser)return;const url=myProfileUrl();if(navigator.share)navigator.share({title:(currentProfile?.displayName||'DevCard')+' — Portfolio',url});else copyUrl(url);}
-
-function showLoginModal(){document.getElementById('login-modal').classList.add('open');}
-function closeLoginModal(){document.getElementById('login-modal').classList.remove('open');}
-document.getElementById('login-modal').addEventListener('click',e=>{if(e.target===document.getElementById('login-modal'))closeLoginModal();});
-
-function showAdminLogin(){document.getElementById('adm-user').value='';document.getElementById('adm-pass').value='';document.getElementById('adm-err').style.display='none';document.getElementById('admin-login-modal').classList.add('open');}
-function closeAdminLogin(){document.getElementById('admin-login-modal').classList.remove('open');}
-document.getElementById('admin-login-modal').addEventListener('click',e=>{if(e.target===document.getElementById('admin-login-modal'))closeAdminLogin();});
-function doAdminLogin(){
-  const u=document.getElementById('adm-user').value.trim();
-  const p=document.getElementById('adm-pass').value;
-  if(u==='admin'&&p==='admin১২৩'){closeAdminLogin();loadAdminPanel();}
-  else{document.getElementById('adm-err').style.display='block';document.getElementById('adm-pass').value='';}
-}
-
-function renderAdminPanel(users){
-  hideLoader();
-  const list=Object.entries(users);
-  const total=list.length,active=list.filter(([,u])=>u.status!=='banned').length,
-        banned=list.filter(([,u])=>u.status==='banned').length,admins=list.filter(([,u])=>u.isAdmin).length;
-  const rows=list.map(([uid,u])=>`<tr>
-    <td><div style="display:flex;align-items:center;gap:9px;"><img src="${u.photoURL||`https://ui-avatars.com/api/?name=${encodeURIComponent(u.displayName||'?')}&size=32&background=7fff6e&color=051200`}" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid var(--border2);">
-    <div><div style="font-weight:600;font-size:.84rem;">${u.displayName||'Unknown'}</div><div style="font-family:'Space Mono',monospace;font-size:.54rem;color:var(--text3);">${u.email||'—'}</div></div></div></td>
-    <td><span class="sbadge ${u.status==='banned'?'banned':'active'}">${u.status==='banned'?'Banned':'Active'}</span>${u.isAdmin?'<span class="sbadge admin-s" style="margin-left:5px;">Admin</span>':''}${u.verified?'<i class="fas fa-badge-check" style="color:var(--accent);margin-left:6px;"></i>':''}</td>
-    <td style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--text3);">${new Date(u.joinedAt||0).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</td>
-    <td style="font-family:'Syne',sans-serif;font-weight:600;">${(u.profileViews||0).toLocaleString()}</td>
-    <td><div class="abtns">
-      <button class="abtn" onclick="viewProfile('${uid}')"><i class="fas fa-eye"></i>View</button>
-      <button class="abtn eu" onclick="adminOpenEdit('${uid}')"><i class="fas fa-pen"></i>Edit</button>
-      <button class="abtn vfy" onclick="adminToggleVerify('${uid}',${!!u.verified})"><i class="fas fa-${u.verified?'times':'check'}-circle"></i>${u.verified?'Unverify':'Verify'}</button>
-      <button class="abtn ban" onclick="adminToggleStatus('${uid}','${u.status||'active'}')"><i class="fas fa-${u.status==='banned'?'unlock':'ban'}"></i>${u.status==='banned'?'Unban':'Ban'}</button>
-      <button class="abtn prom" onclick="adminMakeAdmin('${uid}',${!!u.isAdmin})"><i class="fas fa-${u.isAdmin?'user-minus':'shield-halved'}"></i>${u.isAdmin?'Demote':'Make Admin'}</button>
-      <button class="abtn del" onclick="adminDeleteUser('${uid}')"><i class="fas fa-trash"></i>Delete</button>
-    </div></td>
-  </tr>`).join('');
-  document.getElementById('main').innerHTML=`<div class="admin-wrap">
-    <div class="admin-hd"><i class="fas fa-shield-halved" style="color:var(--accent3);margin-right:10px;"></i>Admin <span>Control Panel</span></div>
-    <div class="admin-sub">Manage all registered users</div>
-    <div class="admin-cards">
-      <div class="admin-card"><div class="admin-card-val">${total}</div><div class="admin-card-lbl">Total Users</div><i class="fas fa-users admin-card-icon"></i></div>
-      <div class="admin-card"><div class="admin-card-val" style="color:var(--success)">${active}</div><div class="admin-card-lbl">Active</div><i class="fas fa-circle-check admin-card-icon" style="color:var(--success);"></i></div>
-      <div class="admin-card"><div class="admin-card-val" style="color:var(--error)">${banned}</div><div class="admin-card-lbl">Banned</div><i class="fas fa-ban admin-card-icon" style="color:var(--error);"></i></div>
-      <div class="admin-card"><div class="admin-card-val" style="color:var(--warn)">${admins}</div><div class="admin-card-lbl">Admins</div><i class="fas fa-shield-halved admin-card-icon" style="color:var(--warn);"></i></div>
-    </div>
-    <div class="admin-table-wrap">
-      <div class="admin-top">
-        <div class="admin-srch"><i class="fas fa-magnifying-glass"></i><input type="text" placeholder="Search…" oninput="filterAdmin(this.value)"></div>
-        <button class="pbtn" onclick="loadAdminPanel()"><i class="fas fa-rotate-right"></i> Refresh</button>
-        <button class="pbtn" onclick="navigateHome()"><i class="fas fa-arrow-left"></i> Back</button>
-      </div>
-      <div style="overflow-x:auto;"><table class="admin-table">
-        <thead><tr><th>User</th><th>Status</th><th>Joined</th><th>Views</th><th>Actions</th></tr></thead>
-        <tbody id="admin-tbody">${rows}</tbody>
-      </table></div>
-    </div>
-  </div>`;
-}
-function filterAdmin(q){document.querySelectorAll('#admin-tbody tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(q.toLowerCase())?'':'none';});}
-
-function showAdminEditModal(uid,p){
-  document.getElementById('admin-edit-modal')?.remove();
-  const w=document.createElement('div');w.id='admin-edit-modal';w.className='overlay open';
-  w.innerHTML=`<div class="modal" style="max-width:500px;">
-    <button class="modal-x" onclick="document.getElementById('admin-edit-modal').remove()"><i class="fas fa-xmark"></i></button>
-    <div class="modal-title"><i class="fas fa-pen" style="color:var(--accent3);margin-right:8px;"></i>Edit: <span>${p.displayName||'Unknown'}</span></div>
-    <div class="frow"><div class="fg"><label class="flabel"><i class="fas fa-user"></i>Name</label><input class="finput" id="ae-name" value="${p.displayName||''}"></div><div class="fg"><label class="flabel"><i class="fas fa-briefcase"></i>Profession</label><input class="finput" id="ae-prof" value="${p.profession||''}"></div></div>
-    <div class="fg" style="margin-top:.6rem;"><label class="flabel"><i class="fas fa-align-left"></i>Bio</label><textarea class="ftarea" id="ae-bio">${p.bio||''}</textarea></div>
-    <div class="fg" style="margin-top:.6rem;"><label class="flabel"><i class="fas fa-location-dot"></i>Location</label><input class="finput" id="ae-loc" value="${p.location||''}"></div>
-    <div class="fg" style="margin-top:.6rem;"><label class="flabel">Status</label><select class="fsel" id="ae-status"><option value="active" ${p.status!=='banned'?'selected':''}>Active</option><option value="banned" ${p.status==='banned'?'selected':''}>Banned</option></select></div>
-    <div style="display:flex;gap:2rem;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);flex-wrap:wrap;">
-      <div class="tog-row" style="border:none;padding:0;gap:1rem;"><div class="tog-info"><div class="tog-label">Public</div></div><label class="tog"><input type="checkbox" id="ae-public" ${p.isPublic!==false?'checked':''}><span class="tog-sl"></span></label></div>
-      <div class="tog-row" style="border:none;padding:0;gap:1rem;"><div class="tog-info"><div class="tog-label">Verified</div></div><label class="tog"><input type="checkbox" id="ae-verified" ${p.verified?'checked':''}><span class="tog-sl"></span></label></div>
-      <div class="tog-row" style="border:none;padding:0;gap:1rem;"><div class="tog-info"><div class="tog-label">Admin</div></div><label class="tog"><input type="checkbox" id="ae-isadmin" ${p.isAdmin?'checked':''}><span class="tog-sl"></span></label></div>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:1.25rem;">
-      <button class="prim" onclick="adminSaveUser('${uid}')" style="flex:1;justify-content:center;"><i class="fas fa-check"></i> Save Changes</button>
-      <button class="dbtn" onclick="if(confirm('Delete permanently?')){adminDeleteUser('${uid}');document.getElementById('admin-edit-modal')?.remove();}"><i class="fas fa-trash"></i> Delete</button>
-    </div>
-  </div>`;
-  document.body.appendChild(w);w.addEventListener('click',e=>{if(e.target===w)w.remove();});
-}
-
-let eSkills=[],eExp=[],eEdu=[],eProj=[];
-function openEditModal(){
-  if(!currentProfile)return;closeMenu();
-  const p=currentProfile;
-  const sv=(id,v)=>{const e=document.getElementById(id);if(e)e.value=v||'';};
-  const sc=(id,v)=>{const e=document.getElementById(id);if(e)e.checked=!!v;};
-  sv('ep-name',p.displayName);sv('ep-prof',p.profession);sv('ep-bio',p.bio);
-  sv('ep-loc',p.location);sv('ep-phone',p.phone);sv('ep-web',p.website);
-  sv('ep-photo',p.photoURL);sv('ep-cover',p.coverPhoto);
-  sv('ep-github',p.github);sv('ep-linkedin',p.linkedin);sv('ep-twitter',p.twitter);
-  sv('ep-fb',p.facebook);sv('ep-ig',p.instagram);sv('ep-yt',p.youtube);
-  eSkills=[...(p.skills||[])];renderSkillTags();
-  eExp=JSON.parse(JSON.stringify(p.experience||[]));renderExpList();
-  eEdu=JSON.parse(JSON.stringify(p.education||[]));renderEduList();
-  eProj=JSON.parse(JSON.stringify(p.projects||[]));renderProjList();
-  sc('ep-public',p.isPublic!==false);sc('ep-showemail',p.showEmail);
-  sc('ep-showphone',p.showPhone);sc('ep-views',p.showViews!==false);
-  const thEl=document.getElementById('ep-theme');if(thEl)thEl.value=p.theme||'dark';
-  document.getElementById('edit-modal').classList.add('open');
-  swETab('basic',document.querySelector('.etab'));
-}
-function closeEditModal(){document.getElementById('edit-modal').classList.remove('open');}
-document.getElementById('edit-modal').addEventListener('click',e=>{if(e.target===document.getElementById('edit-modal'))closeEditModal();});
-function swETab(tab,el){document.querySelectorAll('.etab-pane').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.etab').forEach(b=>b.classList.remove('active'));document.getElementById('ep-'+tab)?.classList.add('active');if(el)el.classList.add('active');}
-
-function renderSkillTags(){
-  const wrap=document.getElementById('skills-tags');if(!wrap)return;
-  wrap.innerHTML=eSkills.map((s,i)=>`<span class="tag-chip">${s}<button type="button" onclick="eSkills.splice(${i},1);renderSkillTags()">×</button></span>`).join('');
-  const inp=document.createElement('input');inp.type='text';inp.className='tag-input';inp.id='skill-inp';inp.placeholder='Type skill, press Enter…';
-  inp.onkeydown=e=>{if(e.key==='Enter'||e.key===','){e.preventDefault();const v=inp.value.trim().replace(/,/g,'');if(v&&!eSkills.includes(v)){eSkills.push(v);renderSkillTags();}else inp.value='';}};
-  wrap.appendChild(inp);
-}
-function addExp(){eExp.push({title:'',company:'',date:'',desc:''});renderExpList();}
-function renderExpList(){const el=document.getElementById('exp-list');if(!el)return;el.innerHTML=eExp.map((e,i)=>`<div class="dyn-item"><div class="dyn-item-hd"><span class="dyn-item-lbl">Experience #${i+1}</span><button class="abtn del" onclick="eExp.splice(${i},1);renderExpList()"><i class="fas fa-trash"></i></button></div><div class="frow"><div class="fg"><label class="flabel">Job Title</label><input class="finput" value="${e.title||''}" oninput="eExp[${i}].title=this.value" placeholder="Frontend Developer"></div><div class="fg"><label class="flabel">Company</label><input class="finput" value="${e.company||''}" oninput="eExp[${i}].company=this.value" placeholder="Google"></div></div><div class="fg"><label class="flabel">Period</label><input class="finput" value="${e.date||''}" oninput="eExp[${i}].date=this.value" placeholder="Jan 2022 – Present"></div><div class="fg"><label class="flabel">Description</label><textarea class="ftarea" oninput="eExp[${i}].desc=this.value" placeholder="What did you do?">${e.desc||''}</textarea></div></div>`).join('');}
-function addEdu(){eEdu.push({degree:'',institution:'',date:'',desc:''});renderEduList();}
-function renderEduList(){const el=document.getElementById('edu-list');if(!el)return;el.innerHTML=eEdu.map((e,i)=>`<div class="dyn-item"><div class="dyn-item-hd"><span class="dyn-item-lbl">Education #${i+1}</span><button class="abtn del" onclick="eEdu.splice(${i},1);renderEduList()"><i class="fas fa-trash"></i></button></div><div class="frow"><div class="fg"><label class="flabel">Degree</label><input class="finput" value="${e.degree||''}" oninput="eEdu[${i}].degree=this.value" placeholder="BSc Computer Science"></div><div class="fg"><label class="flabel">Institution</label><input class="finput" value="${e.institution||''}" oninput="eEdu[${i}].institution=this.value" placeholder="BUET"></div></div><div class="fg"><label class="flabel">Period</label><input class="finput" value="${e.date||''}" oninput="eEdu[${i}].date=this.value" placeholder="2018 – 2022"></div><div class="fg"><label class="flabel">Description</label><textarea class="ftarea" oninput="eEdu[${i}].desc=this.value">${e.desc||''}</textarea></div></div>`).join('');}
-function addProj(){eProj.push({icon:'rocket',title:'',desc:'',tags:[],url:''});renderProjList();}
-function renderProjList(){const el=document.getElementById('proj-list');if(!el)return;el.innerHTML=eProj.map((p,i)=>`<div class="dyn-item"><div class="dyn-item-hd"><span class="dyn-item-lbl">Project #${i+1}</span><button class="abtn del" onclick="eProj.splice(${i},1);renderProjList()"><i class="fas fa-trash"></i></button></div><div class="frow"><div class="fg"><label class="flabel">Title</label><input class="finput" value="${p.title||''}" oninput="eProj[${i}].title=this.value" placeholder="Project name"></div><div class="fg"><label class="flabel">Icon (FA name)</label><input class="finput" value="${p.icon||'rocket'}" oninput="eProj[${i}].icon=this.value" placeholder="rocket, code…"></div></div><div class="fg"><label class="flabel">Description</label><textarea class="ftarea" oninput="eProj[${i}].desc=this.value" placeholder="What does it do?">${p.desc||''}</textarea></div><div class="frow"><div class="fg"><label class="flabel">Tags (comma-separated)</label><input class="finput" value="${(p.tags||[]).join(', ')}" oninput="eProj[${i}].tags=this.value.split(',').map(t=>t.trim()).filter(Boolean)" placeholder="React, Firebase…"></div><div class="fg"><label class="flabel">URL</label><input class="finput" value="${p.url||''}" oninput="eProj[${i}].url=this.value" placeholder="https://…"></div></div></div>`).join('');}
-
-function submitEdit(){
-  const gv=id=>document.getElementById(id)?.value||'',gc=id=>!!document.getElementById(id)?.checked;
-  if(!gv('ep-name')){showToast('Name cannot be empty.','error');return;}
-  const data={displayName:gv('ep-name'),profession:gv('ep-prof'),bio:gv('ep-bio'),location:gv('ep-loc'),phone:gv('ep-phone'),website:gv('ep-web'),photoURL:gv('ep-photo'),coverPhoto:gv('ep-cover'),github:gv('ep-github'),linkedin:gv('ep-linkedin'),twitter:gv('ep-twitter'),facebook:gv('ep-fb'),instagram:gv('ep-ig'),youtube:gv('ep-yt'),skills:eSkills,experience:eExp,education:eEdu,projects:eProj,isPublic:gc('ep-public'),showEmail:gc('ep-showemail'),showPhone:gc('ep-showphone'),showViews:gc('ep-views'),theme:gv('ep-theme'),updatedAt:Date.now()};
-  theme=data.theme;document.documentElement.setAttribute('data-theme',theme);localStorage.setItem('dc-theme',theme);syncIcon();
-  dbSaveProfile(data);
-}
-
-window.addEventListener('hashchange',()=>{
-  const h=window.location.hash;
-  if(h.startsWith('#/u/')){const uid=h.replace('#/u/','');showLoader('Loading…');loadProfilePage(uid);}
-  else if(h==='#/admin'){}
-  else if(!h)navigateHome();
+  } catch(e){ console.warn('user write failed', e); }
+  attachFeed();
 });
 
-loadHeroPage();
-hideLoader();
+function setUserUI(u){
+  const avatar = u.photoURL || 'https://api.dicebear.com/7.x/identicon/svg?seed='+(u.displayName||'g');
+  document.getElementById('userAvatar').src = avatar;
+  document.getElementById('userName').textContent = u.displayName || 'User';
+  document.getElementById('sideAvatar').src = avatar;
+  document.getElementById('sideName').textContent = u.displayName || 'User';
+  document.getElementById('composerAvatar').src = avatar;
+  document.getElementById('profileAvatar').src = avatar;
+  document.getElementById('profileName').textContent = u.displayName || 'Welcome to FaceForge';
+  document.getElementById('profileEmail').textContent = u.email || 'guest@faceforge.dev';
+}
+
+/* ---------- COMPOSE ---------- */
+document.getElementById('postBtn').addEventListener('click', async ()=>{
+  if(!currentUser) return overlay.classList.add('show');
+  const content = document.getElementById('postContent').value.trim();
+  const imageUrl = document.getElementById('postImage').value.trim();
+  if(!content && !imageUrl) return;
+  const postRef = push(ref(db, 'posts'));
+  await set(postRef, {
+    uid: currentUser.uid,
+    authorName: currentUser.displayName,
+    authorAvatar: currentUser.photoURL,
+    content, imageUrl: imageUrl || null,
+    timestamp: serverTimestamp(),
+    likes: {}
+  });
+  document.getElementById('postContent').value='';
+  document.getElementById('postImage').value='';
+});
+
+/* ---------- FEED ---------- */
+const feedEl = document.getElementById('feed');
+let feedAttached = false;
+function attachFeed(){
+  if(feedAttached) return; feedAttached = true;
+  const postsRef = ref(db, 'posts');
+  onValue(postsRef, snap => {
+    const data = snap.val() || {};
+    const list = Object.entries(data)
+      .map(([id, p]) => ({id, ...p}))
+      .sort((a,b) => (b.timestamp||0) - (a.timestamp||0));
+    renderFeed(list);
+    document.getElementById('statPosts').textContent = list.length;
+    document.getElementById('statLikes').textContent = list.reduce((s,p)=>s + Object.keys(p.likes||{}).length, 0);
+  });
+}
+
+function renderFeed(posts){
+  if(!posts.length){
+    feedEl.innerHTML = `<div class="panel p-8 text-center" style="color:var(--text2)">No posts yet. Forge the first one.</div>`;
+    return;
+  }
+  feedEl.innerHTML = '';
+  for(const p of posts){
+    feedEl.appendChild(renderPost(p));
+  }
+}
+
+function escapeHtml(s){return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function timeAgo(ts){
+  if(!ts) return 'just now';
+  const s = Math.floor((Date.now()-ts)/1000);
+  if(s<60) return s+'s';
+  if(s<3600) return Math.floor(s/60)+'m';
+  if(s<86400) return Math.floor(s/3600)+'h';
+  return Math.floor(s/86400)+'d';
+}
+
+function renderPost(p){
+  const el = document.createElement('article');
+  el.className = 'panel p-4 post';
+  const liked = currentUser && p.likes && p.likes[currentUser.uid];
+  const likeCount = p.likes ? Object.keys(p.likes).length : 0;
+  const owned = currentUser && p.uid === currentUser.uid;
+  el.innerHTML = `
+    <header class="flex items-center gap-3">
+      <img src="${p.authorAvatar||'https://api.dicebear.com/7.x/identicon/svg?seed='+p.uid}" class="w-10 h-10 rounded-full"/>
+      <div class="flex-1">
+        <div class="font-syne font-bold">${escapeHtml(p.authorName||'Unknown')}</div>
+        <div class="font-mono text-[10px]" style="color:var(--text2)">${timeAgo(p.timestamp)} ago</div>
+      </div>
+      ${owned ? `<button class="btn btn-danger" data-del>Delete</button>` : ''}
+    </header>
+    ${p.content ? `<p class="mt-3 whitespace-pre-wrap">${escapeHtml(p.content)}</p>` : ''}
+    ${p.imageUrl ? `<img src="${escapeHtml(p.imageUrl)}" class="mt-3 rounded-xl w-full max-h-[480px] object-cover" onerror="this.style.display='none'"/>` : ''}
+    <div class="flex gap-2 mt-3 pt-3" style="border-top:1px solid var(--border)">
+      <button class="btn ${liked?'!text-[color:var(--accent)] !border-[color:var(--accent)]':''}" data-like>♥ <span data-likes>${likeCount}</span></button>
+      <button class="btn" data-toggle-comments>💬 Comments</button>
+      <button class="btn ml-auto">↗ Share</button>
+    </div>
+    <div class="mt-3 hidden" data-comments>
+      <div class="flex flex-col gap-2" data-comment-list></div>
+      <div class="flex gap-2 mt-2">
+        <input class="input" placeholder="Write a comment…" data-comment-input/>
+        <button class="btn btn-primary" data-comment-send>Send</button>
+      </div>
+    </div>
+  `;
+
+  // Like
+  el.querySelector('[data-like]').addEventListener('click', async ()=>{
+    if(!currentUser) return overlay.classList.add('show');
+    const likeRef = ref(db, `posts/${p.id}/likes/${currentUser.uid}`);
+    if(liked) await remove(likeRef);
+    else await set(likeRef, true);
+  });
+
+  // Delete
+  const delBtn = el.querySelector('[data-del]');
+  if(delBtn) delBtn.addEventListener('click', async ()=>{
+    if(confirm('Delete this post?')) await remove(ref(db, `posts/${p.id}`));
+  });
+
+  // Comments
+  const commentsBox = el.querySelector('[data-comments]');
+  const commentList = el.querySelector('[data-comment-list]');
+  let commentsAttached = false;
+  el.querySelector('[data-toggle-comments]').addEventListener('click', ()=>{
+    commentsBox.classList.toggle('hidden');
+    if(!commentsAttached){
+      commentsAttached = true;
+      onValue(ref(db, `posts/${p.id}/comments`), snap=>{
+        const data = snap.val() || {};
+        const list = Object.values(data).sort((a,b)=>(a.timestamp||0)-(b.timestamp||0));
+        commentList.innerHTML = list.map(c=>`
+          <div class="panel2 p-2 flex gap-2">
+            <img src="${c.authorAvatar||'https://api.dicebear.com/7.x/identicon/svg?seed='+c.uid}" class="w-7 h-7 rounded-full"/>
+            <div class="flex-1">
+              <div class="text-xs font-bold font-syne">${escapeHtml(c.authorName||'User')}</div>
+              <div class="text-sm">${escapeHtml(c.content||'')}</div>
+            </div>
+          </div>
+        `).join('') || `<div class="text-xs" style="color:var(--text2)">No comments yet.</div>`;
+      });
+    }
+  });
+  el.querySelector('[data-comment-send]').addEventListener('click', async ()=>{
+    if(!currentUser) return overlay.classList.add('show');
+    const input = el.querySelector('[data-comment-input]');
+    const v = input.value.trim();
+    if(!v) return;
+    const cRef = push(ref(db, `posts/${p.id}/comments`));
+    await set(cRef, {
+      uid: currentUser.uid,
+      authorName: currentUser.displayName,
+      authorAvatar: currentUser.photoURL,
+      content: v,
+      timestamp: serverTimestamp()
+    });
+    input.value='';
+  });
+
+  return el;
+}
+
+/* ---------- Online friends (mock from /users) ---------- */
+onValue(ref(db, 'users'), snap=>{
+  const data = snap.val() || {};
+  const friends = Object.values(data).slice(0, 6);
+  const html = friends.length ? friends.map(f=>`
+    <div class="flex items-center gap-2">
+      <img src="${f.photoURL||'https://api.dicebear.com/7.x/identicon/svg?seed='+f.uid}" class="w-8 h-8 rounded-full"/>
+      <span class="text-sm flex-1 truncate">${escapeHtml(f.displayName||'User')}</span>
+      <span class="dot" style="width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent)"></span>
+    </div>`).join('') : `<div class="text-xs" style="color:var(--text2)">No friends online yet.</div>`;
+  document.getElementById('onlineFriends').innerHTML = html;
+});
+
+// Tick relative timestamps
+setInterval(()=>document.querySelectorAll('[data-likes]'),60000);
 </script>
 </body>
 </html>
