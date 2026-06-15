@@ -3,842 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Digital Smart Card Profile">
-<meta property="og:title" content="Digital Smart Card">
-<meta property="og:type" content="profile">
-<title>Digital Smart Card</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<title>CardForge — Digital Smart Card</title>
+<meta name="description" content="CardForge — Your Premium Digital Smart Card Profile">
+<meta property="og:title" content="CardForge">
+<meta property="og:description" content="Your Digital Identity, Redefined.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23111'/><text x='16' y='22' text-anchor='middle' font-size='18' fill='%23f6b544'>⬡</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-
-<style>
-:root {
-  --bg: #111111;
-  --secondary-bg: #1a1a1a;
-  --card: #222222;
-  --border: #333333;
-  --accent: #f6b544;
-  --accent-hover: #e0a63e;
-  --text: #ffffff;
-  --text-secondary: #888888;
-  --shadow: rgba(0,0,0,.5);
-  --radius: 16px;
-  --radius-sm: 8px;
-}
-[data-theme="light"] {
-  --bg: #f0f0f0;
-  --secondary-bg: #e8e8e8;
-  --card: #ffffff;
-  --border: #dddddd;
-  --text: #111111;
-  --text-secondary: #555555;
-  --shadow: rgba(0,0,0,.15);
-}
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
-
-/* LOADING */
-#loading-screen{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
-.loader-ring{width:52px;height:52px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.loader-text{color:var(--accent);font-size:14px;font-weight:600;letter-spacing:2px}
-
-/* TOAST */
-#toast-container{position:fixed;bottom:24px;right:16px;z-index:8888;display:flex;flex-direction:column;gap:8px}
-.toast{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--accent);color:var(--text);padding:12px 16px;border-radius:var(--radius-sm);font-size:13px;min-width:220px;animation:slideIn .3s ease;box-shadow:0 4px 20px var(--shadow)}
-.toast.error{border-left-color:#e74c3c}
-.toast.success{border-left-color:#2ecc71}
-@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
-
-/* NAV */
-nav{position:sticky;top:0;z-index:100;background:rgba(17,17,17,.85);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;gap:12px}
-.nav-logo{font-size:18px;font-weight:800;color:var(--accent);flex:1}
-.nav-btn{background:none;border:none;color:var(--text-secondary);font-size:18px;cursor:pointer;padding:8px;border-radius:8px;transition:.2s}
-.nav-btn:hover{color:var(--accent);background:var(--card)}
-.nav-user-avatar{width:32px;height:32px;border-radius:50%;object-fit:cover;cursor:pointer;border:2px solid var(--accent)}
-
-/* SIDEBAR */
-#sidebar{position:fixed;left:-280px;top:0;width:280px;height:100vh;background:var(--secondary-bg);border-right:1px solid var(--border);z-index:200;transition:.3s;overflow-y:auto}
-#sidebar.open{left:0}
-.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:199}
-.sidebar-overlay.open{display:block}
-.sidebar-header{padding:20px 16px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-.sidebar-title{font-weight:700;font-size:16px;color:var(--accent)}
-.sidebar-close{background:none;border:none;color:var(--text-secondary);font-size:20px;cursor:pointer}
-.sidebar-menu{padding:12px 0}
-.sidebar-item{display:flex;align-items:center;gap:12px;padding:13px 16px;color:var(--text-secondary);text-decoration:none;cursor:pointer;transition:.2s;font-size:14px;font-weight:500;border:none;background:none;width:100%}
-.sidebar-item:hover,.sidebar-item.active{color:var(--accent);background:rgba(246,181,68,.07)}
-.sidebar-item i{width:20px;text-align:center}
-.sidebar-divider{border:none;border-top:1px solid var(--border);margin:8px 0}
-
-/* SEARCH */
-#search-modal{display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.75);align-items:flex-start;justify-content:center;padding-top:80px}
-#search-modal.open{display:flex}
-.search-box{background:var(--card);border-radius:var(--radius);width:100%;max-width:500px;overflow:hidden;box-shadow:0 20px 60px var(--shadow)}
-.search-input-wrap{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border);gap:12px}
-.search-input-wrap input{flex:1;background:none;border:none;color:var(--text);font-size:16px;outline:none;font-family:inherit}
-.search-input-wrap i{color:var(--text-secondary)}
-#search-results{max-height:360px;overflow-y:auto}
-.search-result-item{display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;transition:.2s;text-decoration:none;color:var(--text)}
-.search-result-item:hover{background:var(--secondary-bg)}
-.search-result-item img{width:42px;height:42px;border-radius:50%;object-fit:cover;border:2px solid var(--border)}
-.search-result-item .name{font-size:14px;font-weight:600}
-.search-result-item .username{font-size:12px;color:var(--text-secondary)}
-
-/* PAGES */
-.page{display:none}
-.page.active{display:block}
-
-/* PROFILE PAGE */
-.cover-wrap{position:relative;height:220px;overflow:hidden}
-.cover-img{width:100%;height:100%;object-fit:cover;filter:blur(2px) brightness(.7);transform:scale(1.05)}
-.cover-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.3),rgba(17,17,17,.9))}
-.cover-actions{position:absolute;top:14px;right:14px;display:flex;gap:8px}
-.cover-btn{background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.2);color:#fff;width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(8px);font-size:14px;transition:.2s}
-.cover-btn:hover{background:var(--accent);border-color:var(--accent);color:#000}
-.cover-name-badge{position:absolute;bottom:80px;left:16px;background:rgba(0,0,0,.5);backdrop-filter:blur(8px);padding:5px 12px;border-radius:6px;font-weight:800;font-size:15px;letter-spacing:1px;text-transform:uppercase;color:#fff;border:1px solid rgba(255,255,255,.15)}
-.cover-vibe{position:absolute;bottom:48px;left:16px;background:rgba(40,40,40,.7);backdrop-filter:blur(8px);padding:6px 14px;border-radius:20px;font-size:13px;color:var(--text-secondary);border:1px solid var(--border)}
-
-/* PROFILE CARD */
-.profile-card{background:var(--card);border-radius:var(--radius) var(--radius) 0 0;margin-top:-36px;position:relative;padding:0 16px 20px;border:1px solid var(--border);border-bottom:none}
-.profile-top-row{display:flex;align-items:flex-end;justify-content:space-between;padding-top:12px}
-.avatar-wrap{position:relative;width:90px;height:90px;flex-shrink:0}
-.avatar-img{width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid var(--accent);box-shadow:0 0 0 3px var(--card)}
-.avatar-edit-btn{position:absolute;bottom:2px;right:2px;background:var(--card);border:2px solid var(--border);color:var(--text-secondary);width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;transition:.2s}
-.avatar-edit-btn:hover{background:var(--accent);color:#000;border-color:var(--accent)}
-.profile-actions-right{display:flex;align-items:center;gap:8px}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 16px;border-radius:24px;font-size:13px;font-weight:600;cursor:pointer;transition:.2s;border:none;font-family:inherit}
-.btn-primary{background:var(--accent);color:#111}
-.btn-primary:hover{background:var(--accent-hover)}
-.btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text)}
-.btn-outline:hover{border-color:var(--accent);color:var(--accent)}
-.btn-icon{width:36px;height:36px;padding:0;border-radius:50%;background:var(--secondary-bg);border:1.5px solid var(--border);color:var(--text-secondary);position:relative}
-.btn-icon .badge{position:absolute;top:-3px;right:-3px;width:10px;height:10px;background:#e74c3c;border-radius:50%;border:2px solid var(--card)}
-.profile-name-row{margin-top:12px}
-.profile-name{font-size:22px;font-weight:800;color:var(--text)}
-.profile-stats{display:flex;gap:16px;margin-top:6px;flex-wrap:wrap}
-.stat-item{display:flex;align-items:center;gap:4px;font-size:13px;color:var(--text-secondary)}
-.stat-item strong{color:var(--text);font-size:14px}
-.stat-dot{color:var(--border)}
-.profile-title{font-size:13px;color:var(--text-secondary);margin-top:10px}
-.profile-bio{font-size:15px;color:var(--text);margin-top:8px;line-height:1.6}
-.profile-meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
-.meta-item{display:flex;align-items:center;gap:5px;font-size:13px;color:var(--text-secondary)}
-.meta-item i{color:var(--accent);font-size:13px}
-
-/* TABS */
-.tabs-wrap{background:var(--card);border:1px solid var(--border);border-top:none;position:sticky;top:57px;z-index:50}
-.tabs{display:flex;overflow-x:auto;scrollbar-width:none}
-.tabs::-webkit-scrollbar{display:none}
-.tab{padding:13px 18px;font-size:13px;font-weight:600;color:var(--text-secondary);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:.2s;background:none;border-left:none;border-right:none;border-top:none;font-family:inherit}
-.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
-.tab:hover{color:var(--text)}
-
-/* TAB CONTENT */
-.tab-content{display:none;padding:16px}
-.tab-content.active{display:block}
-
-/* SECTION CARD */
-.section-card{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:16px;margin-bottom:14px}
-.section-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
-.section-title .edit-btn{background:none;border:none;color:var(--text-secondary);font-size:13px;cursor:pointer;transition:.2s}
-.section-title .edit-btn:hover{color:var(--accent)}
-
-/* ABOUT ITEMS */
-.about-item{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
-.about-item:last-child{border-bottom:none;padding-bottom:0}
-.about-icon{width:38px;height:38px;border-radius:10px;background:rgba(246,181,68,.1);border:1px solid rgba(246,181,68,.2);display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:16px;flex-shrink:0}
-.about-text .title{font-size:14px;font-weight:600;color:var(--text)}
-.about-text .sub{font-size:12px;color:var(--text-secondary);margin-top:2px}
-
-/* SOCIAL GRID */
-.social-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
-.social-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);color:var(--text-secondary);text-decoration:none;font-size:13px;font-weight:500;transition:.2s;cursor:pointer}
-.social-item:hover{border-color:var(--accent);color:var(--accent);background:rgba(246,181,68,.05)}
-.social-item i{font-size:16px;width:18px;text-align:center}
-
-/* CONTACT ITEMS */
-.contact-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
-.contact-item:last-child{border-bottom:none}
-.contact-icon{width:36px;height:36px;border-radius:50%;background:var(--secondary-bg);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:14px}
-.contact-text .label{font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px}
-.contact-text .value{font-size:14px;color:var(--text);margin-top:2px}
-
-/* HOBBIES */
-.hobbies-wrap{display:flex;flex-wrap:wrap;gap:8px}
-.hobby-tag{background:rgba(246,181,68,.1);border:1px solid rgba(246,181,68,.2);color:var(--accent);padding:5px 12px;border-radius:20px;font-size:13px;font-weight:500}
-
-/* FOLLOWERS */
-.followers-list{display:flex;flex-direction:column;gap:10px}
-.follower-item{display:flex;align-items:center;gap:12px;padding:10px;border-radius:var(--radius-sm);background:var(--secondary-bg);border:1px solid var(--border);cursor:pointer;transition:.2s;text-decoration:none}
-.follower-item:hover{border-color:var(--accent)}
-.follower-item img{width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--border)}
-.follower-item .name{font-size:14px;font-weight:600;color:var(--text)}
-.follower-item .uname{font-size:12px;color:var(--text-secondary)}
-.follower-item .follow-btn-sm{margin-left:auto;background:var(--accent);color:#111;border:none;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
-
-/* SETTINGS */
-.settings-group{margin-bottom:20px}
-.settings-group-title{font-size:11px;font-weight:700;color:var(--text-secondary);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;padding:0 4px}
-.settings-item{display:flex;align-items:center;justify-content:space-between;padding:13px 14px;background:var(--card);border-radius:var(--radius-sm);border:1px solid var(--border);margin-bottom:6px;cursor:pointer;transition:.2s}
-.settings-item:hover{border-color:var(--accent)}
-.settings-item-left{display:flex;align-items:center;gap:12px}
-.settings-item-icon{width:34px;height:34px;border-radius:9px;background:var(--secondary-bg);display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:14px}
-.settings-item-text .label{font-size:14px;font-weight:500;color:var(--text)}
-.settings-item-text .sub{font-size:12px;color:var(--text-secondary);margin-top:1px}
-.settings-item i.chevron{color:var(--text-secondary);font-size:12px}
-/* Toggle */
-.toggle{width:44px;height:24px;background:var(--border);border-radius:12px;position:relative;cursor:pointer;transition:.2s}
-.toggle.on{background:var(--accent)}
-.toggle::after{content:'';position:absolute;width:18px;height:18px;background:#fff;border-radius:50%;top:3px;left:3px;transition:.2s;box-shadow:0 1px 4px rgba(0,0,0,.3)}
-.toggle.on::after{left:23px}
-
-/* MODALS */
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:400;align-items:flex-end;justify-content:center}
-.modal-overlay.open{display:flex}
-.modal{background:var(--card);border-radius:var(--radius) var(--radius) 0 0;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;animation:slideUp .3s ease}
-@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
-.modal-header{display:flex;align-items:center;justify-content:space-between;padding:18px 16px 14px;border-bottom:1px solid var(--border)}
-.modal-title{font-size:16px;font-weight:700}
-.modal-close{background:none;border:none;color:var(--text-secondary);font-size:20px;cursor:pointer}
-.modal-body{padding:16px}
-.form-group{margin-bottom:14px}
-.form-label{font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;display:block;text-transform:uppercase;letter-spacing:.5px}
-.form-input{width:100%;background:var(--secondary-bg);border:1.5px solid var(--border);color:var(--text);padding:11px 14px;border-radius:var(--radius-sm);font-size:14px;outline:none;font-family:inherit;transition:.2s}
-.form-input:focus{border-color:var(--accent)}
-.form-input::placeholder{color:var(--text-secondary)}
-textarea.form-input{resize:vertical;min-height:80px}
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.modal-footer{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end}
-.availability-msg{font-size:12px;margin-top:4px;font-weight:500}
-.availability-msg.ok{color:#2ecc71}
-.availability-msg.err{color:#e74c3c}
-
-/* SHARE */
-.share-qr{text-align:center;margin:16px 0}
-.share-qr canvas{border-radius:12px;border:4px solid var(--border)}
-.share-url-box{background:var(--secondary-bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;font-size:13px;color:var(--text-secondary);display:flex;align-items:center;justify-content:space-between;gap:8px;word-break:break-all}
-.share-platforms{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}
-.share-platform-btn{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px;border-radius:var(--radius-sm);border:1px solid var(--border);cursor:pointer;background:none;color:var(--text-secondary);font-size:11px;font-weight:600;transition:.2s;font-family:inherit}
-.share-platform-btn:hover{border-color:var(--accent);color:var(--accent)}
-.share-platform-btn i{font-size:20px}
-
-/* ADMIN */
-.admin-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
-.admin-stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px}
-.admin-stat-card .num{font-size:26px;font-weight:800;color:var(--accent)}
-.admin-stat-card .lbl{font-size:12px;color:var(--text-secondary);margin-top:4px}
-.admin-user-row{display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid var(--border)}
-.admin-user-row img{width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid var(--border)}
-.admin-user-row .info .name{font-size:14px;font-weight:600;color:var(--text)}
-.admin-user-row .info .email{font-size:12px;color:var(--text-secondary)}
-.admin-user-row .actions{margin-left:auto;display:flex;gap:6px}
-.admin-action-btn{background:none;border:1px solid var(--border);color:var(--text-secondary);padding:4px 8px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;transition:.2s}
-.admin-action-btn:hover{border-color:var(--accent);color:var(--accent)}
-.admin-action-btn.danger:hover{border-color:#e74c3c;color:#e74c3c}
-.verified-badge{color:#f6b544;font-size:13px}
-.banned-badge{background:#e74c3c22;color:#e74c3c;padding:2px 7px;border-radius:4px;font-size:11px}
-
-/* LOGIN PAGE */
-.login-wrap{min-height:calc(100vh - 56px);display:flex;align-items:center;justify-content:center;padding:24px}
-.login-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:36px 28px;max-width:380px;width:100%;text-align:center}
-.login-logo{font-size:36px;color:var(--accent);margin-bottom:16px}
-.login-title{font-size:22px;font-weight:800;margin-bottom:8px}
-.login-sub{font-size:14px;color:var(--text-secondary);margin-bottom:28px;line-height:1.6}
-.google-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px;border:1.5px solid var(--border);border-radius:12px;background:var(--secondary-bg);color:var(--text);font-size:15px;font-weight:600;cursor:pointer;transition:.2s;font-family:inherit}
-.google-btn:hover{border-color:var(--accent);background:rgba(246,181,68,.08)}
-.google-btn img{width:20px;height:20px}
-
-/* SKELETON */
-.skeleton{background:linear-gradient(90deg,var(--border) 25%,var(--secondary-bg) 50%,var(--border) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:6px}
-@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-
-/* 404 */
-.not-found{text-align:center;padding:60px 24px}
-.not-found .emoji{font-size:60px;margin-bottom:16px}
-.not-found h2{font-size:24px;font-weight:800;margin-bottom:8px}
-.not-found p{color:var(--text-secondary);margin-bottom:24px}
-
-/* Responsive */
-@media(max-width:480px){
-  .cover-wrap{height:180px}
-  .profile-name{font-size:19px}
-  .social-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
-  .form-row{grid-template-columns:1fr}
-}
-@media(min-width:768px){
-  #sidebar{left:0;width:240px}
-  #sidebar .sidebar-close{display:none}
-  .main-wrap{margin-left:240px}
-  .sidebar-overlay{display:none!important}
-  nav .nav-btn:first-child{display:none}
-  .cover-wrap{height:280px}
-  .profile-card{max-width:680px;margin:auto;margin-top:-36px;border-radius:var(--radius)}
-  .tab-content{max-width:680px;margin:auto}
-}
-.main-wrap{transition:.3s}
-</style>
-</head>
-<body>
-
-<div id="loading-screen">
-  <div class="loader-ring"></div>
-  <div class="loader-text">SMART CARD</div>
-</div>
-
-<div id="toast-container"></div>
-
-<!-- SIDEBAR -->
-<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
-<div id="sidebar">
-  <div class="sidebar-header">
-    <span class="sidebar-title"><i class="fa-solid fa-id-card"></i> Smart Card</span>
-    <button class="sidebar-close" onclick="closeSidebar()"><i class="fa-solid fa-xmark"></i></button>
-  </div>
-  <div class="sidebar-menu">
-    <button class="sidebar-item active" onclick="navigateTo('profile')" id="sb-profile"><i class="fa-solid fa-user"></i> My Profile</button>
-    <button class="sidebar-item" onclick="navigateTo('search-page')" id="sb-search-page"><i class="fa-solid fa-magnifying-glass"></i> Search People</button>
-    <button class="sidebar-item" onclick="navigateTo('settings')" id="sb-settings"><i class="fa-solid fa-gear"></i> Settings</button>
-    <hr class="sidebar-divider">
-    <button class="sidebar-item" onclick="navigateTo('admin')" id="sb-admin" style="display:none"><i class="fa-solid fa-shield-halved"></i> Admin Panel</button>
-    <hr class="sidebar-divider" id="admin-divider" style="display:none">
-    <button class="sidebar-item" onclick="doLogout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
-  </div>
-</div>
-
-<!-- NAV -->
-<nav>
-  <button class="nav-btn" onclick="toggleSidebar()" title="Menu"><i class="fa-solid fa-bars"></i></button>
-  <span class="nav-logo">SmartCard</span>
-  <button class="nav-btn" onclick="openSearch()" title="Search"><i class="fa-solid fa-magnifying-glass"></i></button>
-  <button class="nav-btn" onclick="openShareModal()" title="Share"><i class="fa-solid fa-share-nodes"></i></button>
-  <img id="nav-avatar" class="nav-user-avatar" src="https://via.placeholder.com/32" alt="avatar" onclick="navigateTo('profile')" style="display:none">
-</nav>
-
-<div class="main-wrap" id="main-wrap">
-
-<!-- LOGIN PAGE -->
-<div class="page active" id="page-login">
-  <div class="login-wrap">
-    <div class="login-card">
-      <div class="login-logo"><i class="fa-solid fa-id-card"></i></div>
-      <h2 class="login-title">Digital Smart Card</h2>
-      <p class="login-sub">Create your premium digital profile and share it with the world.</p>
-      <button class="google-btn" onclick="signInWithGoogle()">
-        <img src="https://www.google.com/favicon.ico" alt="Google">
-        Continue with Google
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- PROFILE PAGE -->
-<div class="page" id="page-profile">
-  <!-- Cover -->
-  <div class="cover-wrap">
-    <img id="cover-img" src="https://images.unsplash.com/photo-1557683316-973673baf926?w=800&q=80" alt="cover" class="cover-img">
-    <div class="cover-overlay"></div>
-    <div id="cover-name-badge" class="cover-name-badge">IBRAHIM KHALIL</div>
-    <div class="cover-vibe" id="cover-vibe">Current vibe...</div>
-    <div class="cover-actions" id="cover-actions" style="display:none">
-      <button class="cover-btn" onclick="openEditModal('cover')" title="Edit Cover"><i class="fa-solid fa-pen"></i></button>
-      <button class="cover-btn" onclick="openSearch()" title="Search"><i class="fa-solid fa-magnifying-glass"></i></button>
-      <button class="cover-btn" onclick="openShareModal()" title="Share"><i class="fa-solid fa-share-nodes"></i></button>
-    </div>
-  </div>
-
-  <!-- Profile Card -->
-  <div class="profile-card">
-    <div class="profile-top-row">
-      <div class="avatar-wrap">
-        <img id="profile-avatar" src="https://via.placeholder.com/90" alt="avatar" class="avatar-img">
-        <button class="avatar-edit-btn" id="avatar-edit-btn" onclick="openEditModal('avatar')" style="display:none"><i class="fa-solid fa-camera"></i></button>
-      </div>
-      <div class="profile-actions-right">
-        <button class="btn btn-primary" id="follow-btn" onclick="toggleFollow()" style="display:none">Follow</button>
-        <button class="btn btn-outline" id="edit-profile-btn" onclick="openEditModal('profile')" style="display:none"><i class="fa-solid fa-pen"></i> Edit</button>
-        <button class="btn btn-icon" onclick="openShareModal()"><i class="fa-solid fa-share-nodes"></i><span class="badge"></span></button>
-        <button class="btn btn-icon" id="more-btn"><i class="fa-solid fa-chevron-down"></i></button>
-      </div>
-    </div>
-    <div class="profile-name-row">
-      <div class="profile-name" id="profile-name">Ibrahim Khalil <span id="verified-badge" style="display:none" class="verified-badge"><i class="fa-solid fa-circle-check"></i></span></div>
-      <div class="profile-stats">
-        <div class="stat-item"><strong id="followers-count">0</strong>&nbsp;followers</div>
-        <span class="stat-dot">·</span>
-        <div class="stat-item"><strong id="following-count">0</strong>&nbsp;following</div>
-        <span class="stat-dot">·</span>
-        <div class="stat-item"><strong id="views-count">0</strong>&nbsp;views</div>
-      </div>
-    </div>
-    <div class="profile-title" id="profile-title">Profile · Digital creator</div>
-    <div class="profile-bio" id="profile-bio">Time is relative, but one-way.</div>
-    <div class="profile-meta" id="profile-meta">
-      <div class="meta-item"><i class="fa-solid fa-briefcase"></i><span id="meta-title">Digital creator</span></div>
-      <div class="meta-item"><i class="fa-solid fa-location-dot"></i><span id="meta-address">Dhaka</span></div>
-    </div>
-  </div>
-
-  <!-- Tabs -->
-  <div class="tabs-wrap">
-    <div class="tabs">
-      <button class="tab active" onclick="switchTab('about')">About</button>
-      <button class="tab" onclick="switchTab('contact')">Contact</button>
-      <button class="tab" onclick="switchTab('social')">Social</button>
-      <button class="tab" onclick="switchTab('followers')">Followers</button>
-      <button class="tab" onclick="switchTab('following')">Following</button>
-    </div>
-  </div>
-
-  <!-- About Tab -->
-  <div class="tab-content active" id="tab-about">
-    <!-- Education -->
-    <div class="section-card">
-      <div class="section-title">
-        <span><i class="fa-solid fa-graduation-cap" style="color:var(--accent);margin-right:8px"></i>Education</span>
-        <button class="edit-btn" id="edu-edit-btn" onclick="openEditModal('education')" style="display:none"><i class="fa-solid fa-pen"></i></button>
-      </div>
-      <div id="education-list">
-        <div class="about-item">
-          <div class="about-icon"><i class="fa-solid fa-graduation-cap"></i></div>
-          <div class="about-text">
-            <div class="title">Adarsha Degree College</div>
-            <div class="sub">Bachelor's Degree · 2020–2024</div>
-          </div>
-        </div>
-        <div class="about-item">
-          <div class="about-icon"><i class="fa-solid fa-school"></i></div>
-          <div class="about-text">
-            <div class="title">Baraikhali High School</div>
-            <div class="sub">Secondary · 2015–2020</div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <!-- Work -->
-    <div class="section-card">
-      <div class="section-title">
-        <span><i class="fa-solid fa-briefcase" style="color:var(--accent);margin-right:8px"></i>Work Experience</span>
-        <button class="edit-btn" id="work-edit-btn" onclick="openEditModal('work')" style="display:none"><i class="fa-solid fa-pen"></i></button>
-      </div>
-      <div id="work-list">
-        <div class="about-item">
-          <div class="about-icon"><i class="fa-solid fa-building"></i></div>
-          <div class="about-text">
-            <div class="title">Freelance</div>
-            <div class="sub">Digital Creator · 2021–Present</div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <!-- Hobbies -->
-    <div class="section-card">
-      <div class="section-title">
-        <span><i class="fa-solid fa-heart" style="color:var(--accent);margin-right:8px"></i>Hobbies</span>
-        <button class="edit-btn" id="hobby-edit-btn" onclick="openEditModal('hobbies')" style="display:none"><i class="fa-solid fa-pen"></i></button>
-      </div>
-      <div class="hobbies-wrap" id="hobbies-list">
-        <span class="hobby-tag">Photography</span>
-        <span class="hobby-tag">Coding</span>
-        <span class="hobby-tag">Traveling</span>
-        <span class="hobby-tag">Reading</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Contact Tab -->
-  <div class="tab-content" id="tab-contact">
-    <div class="section-card">
-      <div class="section-title">
-        <span><i class="fa-solid fa-address-book" style="color:var(--accent);margin-right:8px"></i>Contact Info</span>
-        <button class="edit-btn" id="contact-edit-btn" onclick="openEditModal('contact')" style="display:none"><i class="fa-solid fa-pen"></i></button>
-      </div>
-      <div id="contact-list"></div>
-    </div>
-  </div>
-
-  <!-- Social Tab -->
-  <div class="tab-content" id="tab-social">
-    <div class="section-card">
-      <div class="section-title">
-        <span><i class="fa-solid fa-link" style="color:var(--accent);margin-right:8px"></i>Social Links</span>
-        <button class="edit-btn" id="social-edit-btn" onclick="openEditModal('social')" style="display:none"><i class="fa-solid fa-pen"></i></button>
-      </div>
-      <div class="social-grid" id="social-grid"></div>
-    </div>
-  </div>
-
-  <!-- Followers Tab -->
-  <div class="tab-content" id="tab-followers">
-    <div class="followers-list" id="followers-list"></div>
-  </div>
-
-  <!-- Following Tab -->
-  <div class="tab-content" id="tab-following">
-    <div class="followers-list" id="following-list"></div>
-  </div>
-</div>
-
-<!-- SEARCH PAGE -->
-<div class="page" id="page-search-page">
-  <div style="padding:16px">
-    <div class="section-card">
-      <div class="form-group" style="margin:0">
-        <div style="display:flex;align-items:center;gap:10px;background:var(--secondary-bg);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px">
-          <i class="fa-solid fa-magnifying-glass" style="color:var(--text-secondary)"></i>
-          <input type="text" placeholder="Search by name or username..." style="background:none;border:none;color:var(--text);font-size:14px;outline:none;width:100%;font-family:inherit" id="full-search-input" oninput="fullSearch(this.value)">
-        </div>
-      </div>
-    </div>
-    <div id="full-search-results"></div>
-  </div>
-</div>
-
-<!-- SETTINGS PAGE -->
-<div class="page" id="page-settings">
-  <div style="padding:16px">
-    <div class="settings-group">
-      <div class="settings-group-title">Profile</div>
-      <div class="settings-item" onclick="openEditModal('profile')">
-        <div class="settings-item-left">
-          <div class="settings-item-icon"><i class="fa-solid fa-user-pen"></i></div>
-          <div class="settings-item-text"><div class="label">Edit Profile</div><div class="sub">Update your info</div></div>
-        </div>
-        <i class="fa-solid fa-chevron-right chevron"></i>
-      </div>
-      <div class="settings-item" onclick="openEditModal('username')">
-        <div class="settings-item-left">
-          <div class="settings-item-icon"><i class="fa-solid fa-at"></i></div>
-          <div class="settings-item-text"><div class="label">Change Username</div><div class="sub" id="current-username-display">@username</div></div>
-        </div>
-        <i class="fa-solid fa-chevron-right chevron"></i>
-      </div>
-    </div>
-    <div class="settings-group">
-      <div class="settings-group-title">Appearance</div>
-      <div class="settings-item">
-        <div class="settings-item-left">
-          <div class="settings-item-icon"><i class="fa-solid fa-moon"></i></div>
-          <div class="settings-item-text"><div class="label">Dark Mode</div><div class="sub">Toggle theme</div></div>
-        </div>
-        <div class="toggle on" id="theme-toggle" onclick="toggleTheme()"></div>
-      </div>
-    </div>
-    <div class="settings-group">
-      <div class="settings-group-title">Privacy</div>
-      <div class="settings-item">
-        <div class="settings-item-left">
-          <div class="settings-item-icon"><i class="fa-solid fa-envelope"></i></div>
-          <div class="settings-item-text"><div class="label">Hide Email</div><div class="sub">Visitors won't see email</div></div>
-        </div>
-        <div class="toggle" id="toggle-hide-email" onclick="togglePrivacy('hideEmail')"></div>
-      </div>
-      <div class="settings-item">
-        <div class="settings-item-left">
-          <div class="settings-item-icon"><i class="fa-solid fa-phone"></i></div>
-          <div class="settings-item-text"><div class="label">Hide Phone</div><div class="sub">Visitors won't see phone</div></div>
-        </div>
-        <div class="toggle" id="toggle-hide-phone" onclick="togglePrivacy('hidePhone')"></div>
-      </div>
-      <div class="settings-item">
-        <div class="settings-item-left">
-          <div class="settings-item-icon"><i class="fa-solid fa-location-dot"></i></div>
-          <div class="settings-item-text"><div class="label">Hide Address</div><div class="sub">Visitors won't see address</div></div>
-        </div>
-        <div class="toggle" id="toggle-hide-address" onclick="togglePrivacy('hideAddress')"></div>
-      </div>
-    </div>
-    <div class="settings-group">
-      <div class="settings-group-title">Account</div>
-      <div class="settings-item" onclick="doLogout()">
-        <div class="settings-item-left">
-          <div class="settings-item-icon" style="background:#e74c3c22"><i class="fa-solid fa-right-from-bracket" style="color:#e74c3c"></i></div>
-          <div class="settings-item-text"><div class="label" style="color:#e74c3c">Logout</div></div>
-        </div>
-      </div>
-      <div class="settings-item" onclick="deleteAccount()">
-        <div class="settings-item-left">
-          <div class="settings-item-icon" style="background:#e74c3c22"><i class="fa-solid fa-trash" style="color:#e74c3c"></i></div>
-          <div class="settings-item-text"><div class="label" style="color:#e74c3c">Delete Account</div><div class="sub">Permanently remove your account</div></div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ADMIN PAGE -->
-<div class="page" id="page-admin">
-  <div style="padding:16px">
-    <div class="admin-stats">
-      <div class="admin-stat-card"><div class="num" id="admin-total-users">0</div><div class="lbl">Total Users</div></div>
-      <div class="admin-stat-card"><div class="num" id="admin-total-views">0</div><div class="lbl">Total Views</div></div>
-    </div>
-    <div class="section-card">
-      <div class="section-title">User Management</div>
-      <div style="display:flex;gap:8px;margin-bottom:12px">
-        <input type="text" class="form-input" placeholder="Search users..." id="admin-search" oninput="adminSearch(this.value)" style="flex:1">
-      </div>
-      <div id="admin-users-list"></div>
-    </div>
-  </div>
-</div>
-
-<!-- 404 PAGE -->
-<div class="page" id="page-404">
-  <div class="not-found">
-    <div class="emoji">😕</div>
-    <h2>Profile Not Found</h2>
-    <p>This user doesn't exist or the link is broken.</p>
-    <button class="btn btn-primary" onclick="navigateTo('profile')">Go Home</button>
-  </div>
-</div>
-
-</div><!-- end main-wrap -->
-
-<!-- SEARCH MODAL -->
-<div class="modal-overlay" id="search-modal" onclick="if(event.target===this)closeSearch()">
-  <div class="search-box" style="margin:0 12px;border-radius:var(--radius)">
-    <div class="search-input-wrap">
-      <i class="fa-solid fa-magnifying-glass"></i>
-      <input type="text" placeholder="Search people..." id="search-input" oninput="doSearch(this.value)">
-      <button onclick="closeSearch()" style="background:none;border:none;color:var(--text-secondary);cursor:pointer"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    <div id="search-results"></div>
-  </div>
-</div>
-
-<!-- SHARE MODAL -->
-<div class="modal-overlay" id="share-modal" onclick="if(event.target===this)document.getElementById('share-modal').classList.remove('open')">
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title">Share Profile</span>
-      <button class="modal-close" onclick="document.getElementById('share-modal').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    <div class="modal-body">
-      <div class="share-qr"><canvas id="qr-canvas"></canvas></div>
-      <div class="share-url-box">
-        <span id="share-url-text">Loading...</span>
-        <button onclick="copyProfileURL()" style="background:var(--accent);border:none;color:#111;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit"><i class="fa-solid fa-copy"></i> Copy</button>
-      </div>
-      <div style="margin-top:12px;text-align:center">
-        <button onclick="downloadQR()" class="btn btn-outline" style="font-size:13px"><i class="fa-solid fa-download"></i> Download QR</button>
-      </div>
-      <div class="share-platforms">
-        <button class="share-platform-btn" onclick="shareToFacebook()"><i class="fa-brands fa-facebook" style="color:#1877f2"></i>Facebook</button>
-        <button class="share-platform-btn" onclick="shareToWhatsapp()"><i class="fa-brands fa-whatsapp" style="color:#25d366"></i>WhatsApp</button>
-        <button class="share-platform-btn" onclick="shareToTelegram()"><i class="fa-brands fa-telegram" style="color:#0088cc"></i>Telegram</button>
-        <button class="share-platform-btn" onclick="nativeShare()"><i class="fa-solid fa-share-nodes" style="color:var(--accent)"></i>More</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- EDIT MODALS -->
-<!-- Profile Edit -->
-<div class="modal-overlay" id="modal-profile" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title">Edit Profile</span>
-      <button class="modal-close" onclick="document.getElementById('modal-profile').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group"><label class="form-label">Full Name</label><input class="form-input" id="edit-name" placeholder="Your full name"></div>
-      <div class="form-group"><label class="form-label">Title / Profession</label><input class="form-input" id="edit-title" placeholder="e.g. Digital Creator"></div>
-      <div class="form-group"><label class="form-label">Bio</label><textarea class="form-input" id="edit-bio" placeholder="Tell the world about yourself..."></textarea></div>
-      <div class="form-group"><label class="form-label">Address</label><input class="form-input" id="edit-address" placeholder="City, Country"></div>
-      <div class="form-group"><label class="form-label">Current Vibe</label><input class="form-input" id="edit-vibe" placeholder="What's your current vibe?"></div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="document.getElementById('modal-profile').classList.remove('open')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveProfile()">Save Changes</button>
-    </div>
-  </div>
-</div>
-
-<!-- Avatar Edit -->
-<div class="modal-overlay" id="modal-avatar" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title">Change Profile Photo</span>
-      <button class="modal-close" onclick="document.getElementById('modal-avatar').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    <div class="modal-body">
-      <div style="text-align:center;margin-bottom:16px">
-        <img id="avatar-preview" src="" alt="preview" style="width:100px;height:100px;border-radius:50%;object-fit:cover;border:3px solid var(--accent);display:block;margin:0 auto 12px">
-        <input type="file" id="avatar-file" accept="image/*" onchange="previewAvatar(event)" style="display:none">
-        <button class="btn btn-outline" onclick="document.getElementById('avatar-file').click()"><i class="fa-solid fa-upload"></i> Choose Photo</button>
-      </div>
-      <div class="form-group"><label class="form-label">Or paste image URL</label><input class="form-input" id="avatar-url" placeholder="https://..."></div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="document.getElementById('modal-avatar').classList.remove('open')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveAvatar()">Save Photo</button>
-    </div>
-  </div>
-</div>
-
-<!-- Cover Edit -->
-<div class="modal-overlay" id="modal-cover" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title">Change Cover Photo</span>
-      <button class="modal-close" onclick="document.getElementById('modal-cover').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group"><label class="form-label">Cover Photo URL</label><input class="form-input" id="cover-url" placeholder="https://..."></div>
-      <input type="file" id="cover-file" accept="image/*" onchange="previewCover(event)" style="display:none">
-      <div style="margin-bottom:12px">
-        <button class="btn btn-outline" onclick="document.getElementById('cover-file').click()"><i class="fa-solid fa-upload"></i> Upload Photo</button>
-      </div>
-      <div id="cover-preview-wrap" style="display:none">
-        <img id="cover-preview" src="" style="width:100%;height:120px;object-fit:cover;border-radius:8px;border:1px solid var(--border)">
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="document.getElementById('modal-cover').classList.remove('open')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveCover()">Save Cover</button>
-    </div>
-  </div>
-</div>
-
-<!-- Education Edit -->
-<div class="modal-overlay" id="modal-education" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title">Edit Education</span>
-      <button class="modal-close" onclick="document.getElementById('modal-education').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    <div class="modal-body">
-      <div id="edu-entries"></div>
-      <button class="btn btn-outline" onclick="addEduEntry()" style="width:100%;margin-top:8px"><i class="fa-solid fa-plus"></i> Add Education</button>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="document.getElementById('modal-education').classList.remove('open')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveEducation()">Save</button>
-    </div>
-  </div>
-</div>
-
-<!-- Work Edit -->
-<div class="modal-overlay" id="modal-work" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title">Edit Work Experience</span>
-      <button class="modal-close" onclick="document.getElementById('modal-work').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    <div class="modal-body">
-      <div id="work-entries"></div>
-      <button class="btn btn-outline" onclick="addWorkEntry()" style="width:100%;margin-top:8px"><i class="fa-solid fa-plus"></i> Add Work</button>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="document.getElementById('modal-work').classList.remove('open')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveWork()">Save</button>
-    </div>
-  </div>
-</div>
-
-<!-- Hobbies Edit -->
-<div class="modal-overlay" id="modal-hobbies" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title">Edit Hobbies</span>
-      <button class="modal-close" onclick="document.getElementById('modal-hobbies').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label">Hobbies (comma-separated)</label>
-        <textarea class="form-input" id="hobbies-input" placeholder="Photography, Coding, Traveling..."></textarea>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="document.getElementById('modal-hobbies').classList.remove('open')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveHobbies()">Save</button>
-    </div>
-  </div>
-</div>
-
-<!-- Contact Edit -->
-<div class="modal-overlay" id="modal-contact" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title">Edit Contact Info</span>
-      <button class="modal-close" onclick="document.getElementById('modal-contact').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="c-email" placeholder="you@email.com"></div>
-      <div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="c-phone" placeholder="+880..."></div>
-      <div class="form-group"><label class="form-label">WhatsApp</label><input class="form-input" id="c-whatsapp" placeholder="+880..."></div>
-      <div class="form-group"><label class="form-label">Telegram</label><input class="form-input" id="c-telegram" placeholder="@username"></div>
-      <div class="form-group"><label class="form-label">Website</label><input class="form-input" id="c-website" placeholder="https://..."></div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="document.getElementById('modal-contact').classList.remove('open')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveContact()">Save</button>
-    </div>
-  </div>
-</div>
-
-<!-- Social Edit -->
-<div class="modal-overlay" id="modal-social" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title">Edit Social Links</span>
-      <button class="modal-close" onclick="document.getElementById('modal-social').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group"><label class="form-label"><i class="fa-brands fa-facebook" style="color:#1877f2"></i> Facebook</label><input class="form-input" id="s-facebook" placeholder="Profile URL"></div>
-      <div class="form-group"><label class="form-label"><i class="fa-brands fa-instagram" style="color:#e1306c"></i> Instagram</label><input class="form-input" id="s-instagram" placeholder="Profile URL"></div>
-      <div class="form-group"><label class="form-label"><i class="fa-brands fa-x-twitter"></i> X (Twitter)</label><input class="form-input" id="s-twitter" placeholder="Profile URL"></div>
-      <div class="form-group"><label class="form-label"><i class="fa-brands fa-threads"></i> Threads</label><input class="form-input" id="s-threads" placeholder="Profile URL"></div>
-      <div class="form-group"><label class="form-label"><i class="fa-brands fa-linkedin" style="color:#0a66c2"></i> LinkedIn</label><input class="form-input" id="s-linkedin" placeholder="Profile URL"></div>
-      <div class="form-group"><label class="form-label"><i class="fa-brands fa-tiktok"></i> TikTok</label><input class="form-input" id="s-tiktok" placeholder="Profile URL"></div>
-      <div class="form-group"><label class="form-label"><i class="fa-brands fa-youtube" style="color:#ff0000"></i> YouTube</label><input class="form-input" id="s-youtube" placeholder="Channel URL"></div>
-      <div class="form-group"><label class="form-label"><i class="fa-brands fa-telegram" style="color:#0088cc"></i> Telegram</label><input class="form-input" id="s-telegram" placeholder="t.me/username"></div>
-      <div class="form-group"><label class="form-label"><i class="fa-brands fa-whatsapp" style="color:#25d366"></i> WhatsApp</label><input class="form-input" id="s-whatsapp" placeholder="+880..."></div>
-      <div class="form-group"><label class="form-label"><i class="fa-brands fa-github"></i> GitHub</label><input class="form-input" id="s-github" placeholder="Profile URL"></div>
-      <div class="form-group"><label class="form-label"><i class="fa-brands fa-discord" style="color:#5865f2"></i> Discord</label><input class="form-input" id="s-discord" placeholder="User/Server URL"></div>
-      <div class="form-group"><label class="form-label"><i class="fa-brands fa-snapchat" style="color:#fffc00"></i> Snapchat</label><input class="form-input" id="s-snapchat" placeholder="Profile URL"></div>
-      <div class="form-group"><label class="form-label"><i class="fa-brands fa-pinterest" style="color:#e60023"></i> Pinterest</label><input class="form-input" id="s-pinterest" placeholder="Profile URL"></div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="document.getElementById('modal-social').classList.remove('open')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveSocial()">Save</button>
-    </div>
-  </div>
-</div>
-
-<!-- Username Edit -->
-<div class="modal-overlay" id="modal-username" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title">Change Username</span>
-      <button class="modal-close" onclick="document.getElementById('modal-username').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label">Username</label>
-        <input class="form-input" id="new-username" placeholder="e.g. ibrahim094" oninput="checkUsernameAvailability(this.value)">
-        <div class="availability-msg" id="username-availability-msg"></div>
-      </div>
-      <p style="font-size:12px;color:var(--text-secondary)">Only letters (a-z), numbers (0-9), and underscores (_). Must be unique.</p>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="document.getElementById('modal-username').classList.remove('open')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveUsername()">Save Username</button>
-    </div>
-  </div>
-</div>
-
-<!-- Firebase SDK -->
+<!-- Firebase -->
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
-import { getDatabase, ref, set, get, update, push, remove, onValue, increment } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+  import { getDatabase, ref, set, get, update, onValue, push, remove, serverTimestamp, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+  import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
-// =====================================================
-// FIREBASE CONFIG — Replace with your own config
-// =====================================================
+  // ── FIREBASE CONFIG — replace with your own ──
 const firebaseConfig = {
   apiKey: "AIzaSyA_vr4EXR57ap2CRxlS1JpK6wHqIwlU8Rc",
   authDomain: "devcard-6b634.firebaseapp.com",
@@ -850,854 +30,1819 @@ const firebaseConfig = {
   measurementId: "G-C3P4HVH0C0"
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getDatabase(app);
-const provider = new GoogleAuthProvider();
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getDatabase(app);
+  const storage = getStorage(app);
+  const provider = new GoogleAuthProvider();
 
-// Globals
+  window.__fb = { auth, db, storage, provider, ref, set, get, update, onValue, push, remove, serverTimestamp, query, orderByChild, equalTo, sRef, uploadBytes, getDownloadURL, signInWithPopup, signOut, onAuthStateChanged, GoogleAuthProvider };
+</script>
+<style>
+/* ══ THEMES ══ */
+[data-theme="dark"] {
+  --bg: #111111;
+  --bg2: #161616;
+  --bg3: #1a1a1a;
+  --card: #222222;
+  --card2: #2a2a2a;
+  --border: #333333;
+  --border2: #3d3d3d;
+  --accent: #f6b544;
+  --accent-hover: #e0a63e;
+  --accent-dim: rgba(246,181,68,.12);
+  --text: #ffffff;
+  --text2: #aaaaaa;
+  --text3: #666666;
+  --shadow: rgba(0,0,0,.5);
+  --shadow2: rgba(0,0,0,.7);
+  --glass: rgba(34,34,34,.72);
+  --glass-border: rgba(255,255,255,.08);
+  --overlay: rgba(0,0,0,.55);
+  --danger: #ff4e6a;
+  --success: #4ef09c;
+}
+[data-theme="light"] {
+  --bg: #f0f0f0;
+  --bg2: #e8e8e8;
+  --bg3: #dcdcdc;
+  --card: #ffffff;
+  --card2: #f5f5f5;
+  --border: #e0e0e0;
+  --border2: #cccccc;
+  --accent: #d4921a;
+  --accent-hover: #b87d15;
+  --accent-dim: rgba(212,146,26,.1);
+  --text: #111111;
+  --text2: #555555;
+  --text3: #999999;
+  --shadow: rgba(0,0,0,.1);
+  --shadow2: rgba(0,0,0,.2);
+  --glass: rgba(255,255,255,.82);
+  --glass-border: rgba(0,0,0,.08);
+  --overlay: rgba(0,0,0,.35);
+  --danger: #d32f2f;
+  --success: #2e7d32;
+}
+
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+html { scroll-behavior:smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  min-height: 100vh;
+  transition: background .3s, color .3s;
+  overflow-x: hidden;
+}
+
+/* ── LOADING SCREEN ── */
+#loading-screen {
+  position: fixed; inset: 0; z-index: 9999;
+  background: #111;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 1.5rem;
+  transition: opacity .5s, visibility .5s;
+}
+#loading-screen.hidden { opacity: 0; visibility: hidden; }
+.loader-logo {
+  font-size: 2.2rem; font-weight: 800; color: #fff; letter-spacing: -.03em;
+}
+.loader-logo span { color: #f6b544; }
+.loader-bar {
+  width: 160px; height: 3px; background: #2a2a2a; border-radius: 3px; overflow: hidden;
+}
+.loader-fill {
+  height: 100%; width: 0; background: linear-gradient(90deg, #f6b544, #e0a63e);
+  border-radius: 3px; animation: loadFill 1.4s ease forwards;
+}
+@keyframes loadFill { to { width: 100%; } }
+
+/* ── BG GRID ── */
+.bg-grid {
+  position: fixed; inset: 0;
+  background-image: linear-gradient(rgba(246,181,68,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(246,181,68,.025) 1px, transparent 1px);
+  background-size: 56px 56px;
+  pointer-events: none; z-index: 0;
+  animation: gridPan 40s linear infinite;
+}
+[data-theme="light"] .bg-grid { opacity: .4; }
+@keyframes gridPan { to { background-position: 56px 56px; } }
+
+/* ── APP SHELL ── */
+#app { position: relative; z-index: 1; display: none; }
+#app.visible { display: block; }
+
+/* ── NAV ── */
+.nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 800;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .75rem 1.25rem;
+  background: rgba(17,17,17,.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  transition: background .3s;
+}
+[data-theme="light"] .nav { background: rgba(240,240,240,.9); }
+.nav-logo { font-size: 1.15rem; font-weight: 800; letter-spacing: -.02em; color: var(--text); }
+.nav-logo span { color: var(--accent); }
+.nav-right { display: flex; align-items: center; gap: 8px; }
+
+/* ── ICON BUTTONS ── */
+.icon-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 1px solid var(--border2);
+  background: var(--card); color: var(--text2);
+  cursor: pointer; transition: all .22s;
+  font-size: .85rem;
+}
+.icon-btn:hover { background: var(--card2); color: var(--accent); border-color: var(--accent); }
+
+/* ── PROFILE PAGE ── */
+#page-profile { display: none; }
+#page-profile.active { display: block; }
+
+/* COVER */
+.cover-wrap {
+  position: relative; height: 240px; overflow: hidden;
+  margin-top: 56px; /* nav height */
+}
+@media(max-width:600px) { .cover-wrap { height: 180px; } }
+.cover-img {
+  width: 100%; height: 100%; object-fit: cover;
+  filter: blur(0px) brightness(.85);
+  transition: filter .4s;
+}
+.cover-placeholder {
+  width: 100%; height: 100%;
+  background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 50%, #1a1a1a 100%);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 3rem; color: var(--border);
+}
+.cover-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom, transparent 40%, rgba(17,17,17,.85) 100%);
+}
+[data-theme="light"] .cover-overlay {
+  background: linear-gradient(to bottom, transparent 40%, rgba(240,240,240,.8) 100%);
+}
+.cover-actions {
+  position: absolute; top: .75rem; left: .75rem; right: .75rem;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.cover-edit-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: 100px;
+  background: rgba(0,0,0,.55); backdrop-filter: blur(8px);
+  color: #fff; font-size: .72rem; font-weight: 600;
+  border: 1px solid rgba(255,255,255,.15); cursor: pointer;
+  transition: all .2s; letter-spacing: .03em;
+}
+.cover-edit-btn:hover { background: rgba(246,181,68,.2); border-color: var(--accent); color: var(--accent); }
+
+/* PROFILE CARD */
+.profile-card-wrap {
+  max-width: 680px; margin: 0 auto;
+  padding: 0 1rem 2rem;
+}
+.profile-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  margin-top: -60px;
+  padding: 0 0 1.5rem;
+  box-shadow: 0 8px 40px var(--shadow2);
+  overflow: hidden;
+  position: relative;
+}
+.profile-avatar-row {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  padding: 0 1.25rem;
+  margin-top: -1px;
+}
+.avatar-wrap {
+  position: relative; margin-top: -48px; flex-shrink: 0;
+}
+.avatar-img {
+  width: 96px; height: 96px; border-radius: 50%;
+  border: 4px solid var(--card);
+  object-fit: cover;
+  background: var(--card2);
+  box-shadow: 0 4px 20px var(--shadow);
+}
+.avatar-edit {
+  position: absolute; bottom: 4px; right: 4px;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--accent); color: #111;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .75rem; cursor: pointer;
+  border: 2px solid var(--card);
+  transition: transform .2s;
+}
+.avatar-edit:hover { transform: scale(1.12); }
+.profile-actions {
+  display: flex; gap: 8px; padding-bottom: .5rem;
+}
+.btn-follow {
+  padding: 8px 22px; border-radius: 100px;
+  background: var(--accent); color: #111;
+  font-weight: 700; font-size: .82rem;
+  border: none; cursor: pointer;
+  transition: background .2s, transform .15s;
+  letter-spacing: .02em;
+}
+.btn-follow:hover { background: var(--accent-hover); transform: scale(1.04); }
+.btn-follow.following {
+  background: transparent; color: var(--text);
+  border: 1.5px solid var(--border2);
+}
+.btn-follow.following:hover { border-color: var(--danger); color: var(--danger); }
+.btn-share {
+  padding: 8px 18px; border-radius: 100px;
+  background: var(--card2); color: var(--text2);
+  font-weight: 600; font-size: .82rem;
+  border: 1px solid var(--border2); cursor: pointer;
+  transition: all .2s;
+}
+.btn-share:hover { border-color: var(--accent); color: var(--accent); }
+
+/* PROFILE BODY */
+.profile-body { padding: .5rem 1.25rem 0; }
+.profile-name {
+  font-size: 1.4rem; font-weight: 800; letter-spacing: -.02em;
+  color: var(--text); line-height: 1.2;
+}
+.verified-badge { color: var(--accent); font-size: 1rem; margin-left: 4px; }
+.profile-username { font-size: .8rem; color: var(--text3); margin-top: 2px; font-family: 'Space Mono', monospace; }
+.profile-title {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: .5rem;
+  font-size: .82rem; font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-dim);
+  padding: 4px 12px; border-radius: 100px;
+}
+.profile-bio {
+  margin-top: .75rem;
+  font-size: .88rem; color: var(--text2); line-height: 1.6;
+}
+
+/* STATS ROW */
+.stats-row {
+  display: flex; gap: 0;
+  margin: 1rem 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.stat-item {
+  flex: 1; text-align: center; padding: .85rem .5rem;
+  cursor: pointer; transition: background .18s;
+  position: relative;
+}
+.stat-item + .stat-item::before {
+  content: ''; position: absolute; left: 0; top: 20%; bottom: 20%;
+  width: 1px; background: var(--border);
+}
+.stat-item:hover { background: var(--card2); }
+.stat-num {
+  font-size: 1.2rem; font-weight: 800; color: var(--text);
+  font-family: 'Space Mono', monospace;
+}
+.stat-lbl { font-size: .68rem; color: var(--text3); margin-top: 2px; letter-spacing: .06em; text-transform: uppercase; }
+
+/* INFO ITEMS */
+.info-list { display: flex; flex-direction: column; gap: .5rem; padding: .25rem 0; }
+.info-item {
+  display: flex; align-items: center; gap: 10px;
+  font-size: .83rem; color: var(--text2);
+}
+.info-item i { width: 16px; color: var(--accent); font-size: .85rem; text-align: center; flex-shrink: 0; }
+
+/* SECTION TABS */
+.section-tabs {
+  display: flex; gap: 4px;
+  padding: .75rem 1.25rem 0;
+  border-top: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.section-tabs::-webkit-scrollbar { display: none; }
+.tab-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 16px; border-radius: 100px;
+  font-size: .78rem; font-weight: 600;
+  color: var(--text3); cursor: pointer;
+  border: 1px solid transparent;
+  background: transparent;
+  white-space: nowrap;
+  transition: all .18s;
+}
+.tab-btn:hover { color: var(--text); background: var(--card2); }
+.tab-btn.active {
+  color: var(--accent);
+  background: var(--accent-dim);
+  border-color: rgba(246,181,68,.25);
+}
+.tab-btn i { font-size: .8rem; }
+
+/* TAB PANELS */
+.tab-panel { display: none; padding: 1.25rem; }
+.tab-panel.active { display: block; }
+
+/* ABOUT CARDS */
+.about-section { margin-bottom: 1.25rem; }
+.about-section-title {
+  font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--text3); margin-bottom: .75rem;
+  display: flex; align-items: center; gap: 8px;
+}
+.about-section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.about-entry {
+  display: flex; gap: 12px;
+  padding: .75rem;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: .5rem;
+  transition: border-color .18s;
+}
+.about-entry:hover { border-color: var(--border2); }
+.about-entry-icon {
+  width: 38px; height: 38px; border-radius: 10px;
+  background: var(--accent-dim);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem; color: var(--accent); flex-shrink: 0;
+}
+.about-entry-info { flex: 1; min-width: 0; }
+.about-entry-main { font-size: .88rem; font-weight: 600; color: var(--text); }
+.about-entry-sub { font-size: .78rem; color: var(--text2); margin-top: 2px; }
+.about-entry-year { font-size: .72rem; color: var(--text3); margin-top: 2px; font-family: 'Space Mono', monospace; }
+
+/* HOBBY CHIPS */
+.hobby-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.hobby-chip {
+  padding: 6px 14px; border-radius: 100px;
+  background: var(--bg3); border: 1px solid var(--border);
+  font-size: .78rem; color: var(--text2);
+  transition: all .18s;
+}
+.hobby-chip:hover { border-color: var(--accent); color: var(--accent); }
+
+/* SOCIAL GRID */
+.social-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.social-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: .75rem 1rem;
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 12px; cursor: pointer;
+  transition: all .2s; text-decoration: none;
+  color: var(--text);
+}
+.social-item:hover { border-color: var(--border2); transform: translateY(-2px); box-shadow: 0 6px 20px var(--shadow); }
+.social-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+.social-name { font-size: .8rem; font-weight: 600; }
+.social-handle { font-size: .68rem; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px; }
+
+/* CONTACT ITEMS */
+.contact-list { display: flex; flex-direction: column; gap: 8px; }
+.contact-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: .85rem 1rem;
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 12px; cursor: pointer;
+  transition: all .18s; text-decoration: none; color: var(--text);
+}
+.contact-item:hover { border-color: var(--border2); }
+.contact-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+.contact-info { flex: 1; min-width: 0; }
+.contact-label { font-size: .7rem; color: var(--text3); letter-spacing: .06em; text-transform: uppercase; }
+.contact-value { font-size: .88rem; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── SIDEBAR / DRAWER ── */
+.sidebar-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.6);
+  z-index: 900; opacity: 0; pointer-events: none;
+  transition: opacity .28s;
+}
+.sidebar-overlay.open { opacity: 1; pointer-events: all; }
+.sidebar {
+  position: fixed; top: 0; right: -300px; bottom: 0; width: 280px;
+  background: var(--bg2); border-left: 1px solid var(--border);
+  z-index: 910; padding: 1.5rem 1rem;
+  transition: right .28s cubic-bezier(.4,0,.2,1);
+  display: flex; flex-direction: column; gap: .5rem;
+}
+.sidebar.open { right: 0; }
+.sidebar-title { font-size: 1rem; font-weight: 700; margin-bottom: .5rem; padding: .5rem .75rem; }
+.sidebar-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: .75rem .875rem; border-radius: 12px;
+  font-size: .88rem; font-weight: 500; color: var(--text2);
+  cursor: pointer; transition: all .18s; border: none; background: transparent; width: 100%; text-align: left;
+}
+.sidebar-item:hover { background: var(--card); color: var(--text); }
+.sidebar-item.danger:hover { background: rgba(255,78,106,.1); color: var(--danger); }
+.sidebar-item i { width: 20px; text-align: center; color: var(--accent); }
+.sidebar-item.danger i { color: var(--danger); }
+.sidebar-sep { height: 1px; background: var(--border); margin: .5rem 0; }
+
+/* ── SEARCH OVERLAY ── */
+.search-overlay {
+  position: fixed; inset: 0; z-index: 850;
+  background: rgba(0,0,0,.8); backdrop-filter: blur(8px);
+  display: flex; flex-direction: column; align-items: center; padding-top: 80px; gap: 12px;
+  opacity: 0; pointer-events: none; transition: opacity .22s;
+}
+.search-overlay.open { opacity: 1; pointer-events: all; }
+.search-box {
+  width: min(560px, 90vw);
+  display: flex; align-items: center; gap: 12px;
+  background: var(--card); border: 1px solid var(--border2);
+  border-radius: 14px; padding: .85rem 1.1rem;
+}
+.search-input {
+  flex: 1; background: transparent; border: none; outline: none;
+  font-size: 1rem; color: var(--text); font-family: 'Inter', sans-serif;
+}
+.search-input::placeholder { color: var(--text3); }
+.search-results {
+  width: min(560px, 90vw);
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 14px; overflow: hidden;
+  max-height: 340px; overflow-y: auto;
+}
+.search-result-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: .875rem 1.1rem; cursor: pointer;
+  transition: background .15s; border-bottom: 1px solid var(--border);
+}
+.search-result-item:last-child { border-bottom: none; }
+.search-result-item:hover { background: var(--card2); }
+.search-result-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: var(--card2); }
+.search-result-name { font-weight: 600; font-size: .9rem; }
+.search-result-username { font-size: .76rem; color: var(--text3); font-family: 'Space Mono', monospace; }
+
+/* ── MODALS ── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0,0,0,.7); backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem;
+  opacity: 0; pointer-events: none; transition: opacity .25s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: var(--card); border: 1px solid var(--border2);
+  border-radius: 20px; width: min(520px, 100%);
+  max-height: 90vh; overflow-y: auto;
+  animation: modalIn .25s ease;
+}
+@keyframes modalIn { from { transform: scale(.95) translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.modal-title { font-size: 1.05rem; font-weight: 700; }
+.modal-close {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--card2); border: none; color: var(--text2);
+  cursor: pointer; font-size: .9rem; transition: all .18s;
+}
+.modal-close:hover { background: rgba(255,78,106,.15); color: var(--danger); }
+.modal-body { padding: 1.5rem; }
+
+/* FORM ELEMENTS */
+.form-group { margin-bottom: 1rem; }
+.form-label { font-size: .78rem; font-weight: 600; color: var(--text2); letter-spacing: .04em; text-transform: uppercase; margin-bottom: .45rem; display: block; }
+.form-control {
+  width: 100%; padding: .75rem 1rem;
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 10px; color: var(--text);
+  font-size: .9rem; font-family: 'Inter', sans-serif;
+  transition: border-color .18s;
+  outline: none;
+}
+.form-control:focus { border-color: var(--accent); }
+.form-control::placeholder { color: var(--text3); }
+textarea.form-control { resize: vertical; min-height: 90px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media(max-width:420px) { .form-row { grid-template-columns: 1fr; } }
+
+.btn-primary {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: .85rem; border-radius: 12px;
+  background: var(--accent); color: #111;
+  font-weight: 700; font-size: .9rem;
+  border: none; cursor: pointer; transition: background .2s;
+}
+.btn-primary:hover { background: var(--accent-hover); }
+
+/* AVAILABILITY INDICATOR */
+.avail-msg { font-size: .75rem; margin-top: .4rem; }
+.avail-ok { color: var(--success); }
+.avail-err { color: var(--danger); }
+
+/* ── SHARE MODAL ── */
+.share-url-box {
+  display: flex; gap: 8px;
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 12px; padding: .75rem 1rem;
+  align-items: center; margin-bottom: 1rem;
+}
+.share-url { flex: 1; font-size: .82rem; color: var(--text2); font-family: 'Space Mono', monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.share-copy { padding: 6px 14px; border-radius: 8px; background: var(--accent); color: #111; font-weight: 700; font-size: .78rem; border: none; cursor: pointer; white-space: nowrap; transition: background .18s; }
+.share-copy:hover { background: var(--accent-hover); }
+#qr-canvas { display: block; margin: 0 auto 1rem; border-radius: 12px; }
+.share-platforms { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; }
+.share-platform {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: .75rem .5rem; border-radius: 12px;
+  background: var(--bg3); border: 1px solid var(--border);
+  cursor: pointer; transition: all .2s; font-size: .7rem; color: var(--text2);
+}
+.share-platform:hover { border-color: var(--border2); transform: translateY(-2px); }
+.share-platform i { font-size: 1.3rem; }
+
+/* ── LOGIN PAGE ── */
+#page-login {
+  display: none; min-height: 100vh;
+  align-items: center; justify-content: center;
+}
+#page-login.active { display: flex; }
+.login-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 24px; padding: 3rem 2.5rem;
+  width: min(420px, 94vw);
+  box-shadow: 0 16px 64px var(--shadow2);
+  text-align: center;
+}
+.login-logo { font-size: 2rem; font-weight: 800; margin-bottom: .5rem; letter-spacing: -.03em; }
+.login-logo span { color: var(--accent); }
+.login-sub { font-size: .9rem; color: var(--text2); margin-bottom: 2.5rem; line-height: 1.5; }
+.btn-google {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  width: 100%; padding: 1rem; border-radius: 12px;
+  background: var(--bg3); border: 1px solid var(--border2);
+  color: var(--text); font-weight: 600; font-size: .95rem;
+  cursor: pointer; transition: all .22s;
+}
+.btn-google:hover { background: var(--card2); border-color: var(--accent); }
+.btn-google img { width: 20px; height: 20px; }
+.login-footer { font-size: .75rem; color: var(--text3); margin-top: 1.5rem; }
+
+/* ── SETTINGS PAGE ── */
+#page-settings { display: none; padding-top: 56px; }
+#page-settings.active { display: block; }
+.settings-wrap { max-width: 600px; margin: 0 auto; padding: 2rem 1rem; }
+.settings-section { margin-bottom: 2rem; }
+.settings-section-title {
+  font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--text3); margin-bottom: 1rem;
+  padding-bottom: .5rem; border-bottom: 1px solid var(--border);
+}
+.settings-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .875rem 1rem;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; margin-bottom: .5rem;
+  cursor: pointer; transition: border-color .18s;
+}
+.settings-item:hover { border-color: var(--border2); }
+.settings-item-left { display: flex; align-items: center; gap: 12px; }
+.settings-item-icon { width: 36px; height: 36px; border-radius: 10px; background: var(--accent-dim); display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: .9rem; }
+.settings-item-icon.danger { background: rgba(255,78,106,.1); color: var(--danger); }
+.settings-item-name { font-size: .9rem; font-weight: 500; }
+.settings-item-desc { font-size: .75rem; color: var(--text3); margin-top: 1px; }
+.settings-item-right { color: var(--text3); font-size: .85rem; }
+
+/* TOGGLE */
+.toggle-wrap { position: relative; width: 44px; height: 24px; }
+.toggle-wrap input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute; inset: 0; background: var(--border2); border-radius: 24px;
+  cursor: pointer; transition: background .2s;
+}
+.toggle-slider::before {
+  content: ''; position: absolute; width: 18px; height: 18px;
+  left: 3px; top: 3px; background: #fff; border-radius: 50%;
+  transition: transform .2s;
+}
+.toggle-wrap input:checked + .toggle-slider { background: var(--accent); }
+.toggle-wrap input:checked + .toggle-slider::before { transform: translateX(20px); }
+
+/* ── TOAST ── */
+.toast-container { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); z-index: 9990; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+.toast {
+  padding: .75rem 1.25rem; border-radius: 100px;
+  background: var(--card); border: 1px solid var(--border2);
+  box-shadow: 0 8px 32px var(--shadow2);
+  font-size: .85rem; font-weight: 500; color: var(--text);
+  white-space: nowrap;
+  animation: toastIn .3s ease, toastOut .3s ease 2.2s forwards;
+}
+.toast.success { border-color: var(--success); color: var(--success); }
+.toast.error { border-color: var(--danger); color: var(--danger); }
+@keyframes toastIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes toastOut { to { opacity: 0; transform: translateY(-8px); } }
+
+/* ── FOLLOWERS/FOLLOWING LIST ── */
+.user-list { display: flex; flex-direction: column; gap: 8px; }
+.user-list-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: .75rem 1rem;
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 12px; cursor: pointer; transition: border-color .18s;
+}
+.user-list-item:hover { border-color: var(--border2); }
+.user-list-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; background: var(--card2); }
+.user-list-name { font-weight: 600; font-size: .88rem; }
+.user-list-username { font-size: .74rem; color: var(--text3); font-family: 'Space Mono', monospace; }
+
+/* ── ADMIN PANEL ── */
+#page-admin { display: none; padding-top: 56px; }
+#page-admin.active { display: block; }
+.admin-wrap { max-width: 860px; margin: 0 auto; padding: 2rem 1rem; }
+.admin-stats { display: grid; grid-template-columns: repeat(auto-fit,minmax(140px,1fr)); gap: 12px; margin-bottom: 2rem; }
+.admin-stat-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 1.25rem;
+  text-align: center;
+}
+.admin-stat-num { font-size: 2rem; font-weight: 800; font-family: 'Space Mono', monospace; color: var(--accent); }
+.admin-stat-lbl { font-size: .72rem; color: var(--text3); text-transform: uppercase; letter-spacing: .08em; margin-top: 4px; }
+.admin-users-table { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+.admin-table-header { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; padding: .875rem 1.1rem; background: var(--bg3); font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text3); }
+.admin-table-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; padding: .875rem 1.1rem; border-top: 1px solid var(--border); align-items: center; }
+.admin-table-row:hover { background: var(--card2); }
+.admin-actions { display: flex; gap: 6px; }
+.admin-btn {
+  padding: 4px 10px; border-radius: 6px; font-size: .72rem; font-weight: 600;
+  border: 1px solid; cursor: pointer; transition: all .18s;
+}
+.admin-btn-verify { color: var(--success); border-color: var(--success); background: transparent; }
+.admin-btn-verify:hover { background: rgba(78,240,156,.1); }
+.admin-btn-ban { color: var(--danger); border-color: var(--danger); background: transparent; }
+.admin-btn-ban:hover { background: rgba(255,78,106,.1); }
+.admin-btn-del { color: var(--text3); border-color: var(--border); background: transparent; }
+.admin-btn-del:hover { color: var(--danger); border-color: var(--danger); }
+
+/* ── 404 ── */
+#page-404 { display: none; min-height: 100vh; align-items: center; justify-content: center; flex-direction: column; gap: 1.5rem; text-align: center; }
+#page-404.active { display: flex; }
+.err-big { font-size: 6rem; font-weight: 800; color: var(--accent); line-height: 1; font-family: 'Space Mono', monospace; }
+.err-msg { font-size: 1.1rem; color: var(--text2); }
+
+/* ── RESPONSIVE ── */
+@media(max-width:500px) {
+  .profile-card-wrap { padding: 0 .5rem 2rem; }
+  .profile-body { padding: .5rem .875rem 0; }
+  .section-tabs { padding: .75rem .875rem 0; }
+  .tab-panel { padding: 1rem .875rem; }
+  .social-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* ── SKELETON ── */
+.skeleton {
+  background: linear-gradient(90deg, var(--border) 25%, var(--border2) 50%, var(--border) 75%);
+  background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 8px;
+}
+@keyframes shimmer { to { background-position: -200% 0; } }
+
+/* ── UTILITY ── */
+.hidden { display: none !important; }
+a { text-decoration: none; color: inherit; }
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+
+<!-- LOADING SCREEN -->
+<div id="loading-screen">
+  <div class="loader-logo">Card<span>Forge</span></div>
+  <div class="loader-bar"><div class="loader-fill"></div></div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- SEARCH OVERLAY -->
+<div class="search-overlay" id="search-overlay">
+  <div class="search-box">
+    <i class="fa fa-search" style="color:var(--text3)"></i>
+    <input class="search-input" id="search-input" placeholder="Search by name or username…">
+    <i class="fa fa-times" style="color:var(--text3);cursor:pointer" onclick="closeSearch()"></i>
+  </div>
+  <div class="search-results hidden" id="search-results"></div>
+</div>
+
+<!-- SIDEBAR -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-title">CardForge <span style="color:var(--accent)">⬡</span></div>
+  <button class="sidebar-item" onclick="showPage('profile');closeSidebar()"><i class="fa fa-user"></i> My Profile</button>
+  <button class="sidebar-item" onclick="showPage('settings');closeSidebar()"><i class="fa fa-cog"></i> Settings</button>
+  <div class="sidebar-sep"></div>
+  <button class="sidebar-item" id="sidebar-admin-btn" style="display:none" onclick="showPage('admin');closeSidebar()"><i class="fa fa-shield-halved"></i> Admin Panel</button>
+  <div class="sidebar-sep" id="sidebar-admin-sep" style="display:none"></div>
+  <div style="margin-top:auto">
+    <button class="sidebar-item danger" onclick="doLogout()"><i class="fa fa-right-from-bracket"></i> Sign Out</button>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav class="nav" id="main-nav" style="display:none">
+  <div class="nav-logo">Card<span>Forge</span></div>
+  <div class="nav-right">
+    <button class="icon-btn" onclick="openSearch()" title="Search"><i class="fa fa-search"></i></button>
+    <button class="icon-btn" onclick="openSidebar()" title="Menu"><i class="fa fa-bars"></i></button>
+  </div>
+</nav>
+
+<!-- LOGIN PAGE -->
+<div id="page-login">
+  <div class="bg-grid" style="z-index:0"></div>
+  <div class="login-card" style="position:relative;z-index:1">
+    <div class="login-logo">Card<span>Forge</span></div>
+    <p class="login-sub">Your Digital Identity, Redefined.<br>One link for everything you are.</p>
+    <button class="btn-google" onclick="doGoogleLogin()">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+      Continue with Google
+    </button>
+    <div class="login-footer">By signing in, you agree to our Terms of Service & Privacy Policy.</div>
+  </div>
+</div>
+
+<!-- PROFILE PAGE -->
+<div id="app">
+<div id="page-profile">
+  <!-- COVER -->
+  <div class="cover-wrap">
+    <img id="cover-img" class="cover-img hidden" alt="Cover">
+    <div id="cover-placeholder" class="cover-placeholder"><i class="fa fa-image"></i></div>
+    <div class="cover-overlay"></div>
+    <div class="cover-actions">
+      <div></div>
+      <button class="cover-edit-btn" id="cover-edit-btn" style="display:none" onclick="openEditCover()">
+        <i class="fa fa-camera"></i> Edit Cover
+      </button>
+    </div>
+  </div>
+
+  <!-- PROFILE CARD -->
+  <div class="profile-card-wrap">
+    <div class="profile-card">
+      <div class="profile-avatar-row">
+        <div class="avatar-wrap">
+          <img id="profile-avatar" class="avatar-img" src="" alt="">
+          <div class="avatar-edit" id="avatar-edit-btn" style="display:none" onclick="openEditAvatar()">
+            <i class="fa fa-camera"></i>
+          </div>
+        </div>
+        <div class="profile-actions">
+          <button class="btn-follow" id="btn-follow" style="display:none" onclick="toggleFollow()">Follow</button>
+          <button class="btn-share" onclick="openShare()"><i class="fa fa-share-nodes"></i> Share</button>
+        </div>
+      </div>
+
+      <div class="profile-body">
+        <div class="profile-name">
+          <span id="profile-name">Loading…</span>
+          <span class="verified-badge hidden" id="verified-badge"><i class="fa fa-circle-check"></i></span>
+        </div>
+        <div class="profile-username" id="profile-username">@username</div>
+        <div class="profile-title hidden" id="profile-title-wrap">
+          <i class="fa fa-briefcase"></i>
+          <span id="profile-title"></span>
+        </div>
+        <p class="profile-bio hidden" id="profile-bio"></p>
+
+        <div class="stats-row">
+          <div class="stat-item" onclick="openFollowList('followers')">
+            <div class="stat-num" id="stat-followers">0</div>
+            <div class="stat-lbl">Followers</div>
+          </div>
+          <div class="stat-item" onclick="openFollowList('following')">
+            <div class="stat-num" id="stat-following">0</div>
+            <div class="stat-lbl">Following</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-num" id="stat-views">0</div>
+            <div class="stat-lbl">Views</div>
+          </div>
+        </div>
+
+        <div class="info-list" id="profile-info-list"></div>
+      </div>
+
+      <!-- TABS -->
+      <div class="section-tabs">
+        <button class="tab-btn active" data-tab="about" onclick="switchTab('about')"><i class="fa fa-user"></i> About</button>
+        <button class="tab-btn" data-tab="social" onclick="switchTab('social')"><i class="fa fa-share-nodes"></i> Social</button>
+        <button class="tab-btn" data-tab="contact" onclick="switchTab('contact')"><i class="fa fa-address-book"></i> Contact</button>
+      </div>
+
+      <!-- ABOUT TAB -->
+      <div class="tab-panel active" id="tab-about">
+        <div class="about-section">
+          <div class="about-section-title"><i class="fa fa-graduation-cap"></i> Education</div>
+          <div id="edu-list"></div>
+        </div>
+        <div class="about-section">
+          <div class="about-section-title"><i class="fa fa-briefcase"></i> Work Experience</div>
+          <div id="work-list"></div>
+        </div>
+        <div class="about-section">
+          <div class="about-section-title"><i class="fa fa-heart"></i> Hobbies</div>
+          <div class="hobby-chips" id="hobby-list"></div>
+        </div>
+      </div>
+
+      <!-- SOCIAL TAB -->
+      <div class="tab-panel" id="tab-social">
+        <div class="social-grid" id="social-grid"></div>
+      </div>
+
+      <!-- CONTACT TAB -->
+      <div class="tab-panel" id="tab-contact">
+        <div class="contact-list" id="contact-list"></div>
+      </div>
+    </div>
+  </div>
+</div><!-- /page-profile -->
+
+<!-- SETTINGS PAGE -->
+<div id="page-settings">
+  <div class="settings-wrap">
+    <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:1.5rem">Settings</h2>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Profile</div>
+      <div class="settings-item" onclick="openEditProfile()">
+        <div class="settings-item-left">
+          <div class="settings-item-icon"><i class="fa fa-pen"></i></div>
+          <div><div class="settings-item-name">Edit Profile</div><div class="settings-item-desc">Update your info, bio, education & more</div></div>
+        </div>
+        <div class="settings-item-right"><i class="fa fa-chevron-right"></i></div>
+      </div>
+      <div class="settings-item" onclick="openChangeUsername()">
+        <div class="settings-item-left">
+          <div class="settings-item-icon"><i class="fa fa-at"></i></div>
+          <div><div class="settings-item-name">Change Username</div><div class="settings-item-desc" id="settings-username-display">@username</div></div>
+        </div>
+        <div class="settings-item-right"><i class="fa fa-chevron-right"></i></div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Appearance</div>
+      <div class="settings-item">
+        <div class="settings-item-left">
+          <div class="settings-item-icon"><i class="fa fa-moon"></i></div>
+          <div><div class="settings-item-name">Dark Mode</div><div class="settings-item-desc">Toggle dark/light theme</div></div>
+        </div>
+        <label class="toggle-wrap"><input type="checkbox" id="theme-toggle" onchange="toggleTheme()"><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Privacy</div>
+      <div class="settings-item">
+        <div class="settings-item-left">
+          <div class="settings-item-icon"><i class="fa fa-envelope"></i></div>
+          <div><div class="settings-item-name">Hide Email</div><div class="settings-item-desc">Keep your email private</div></div>
+        </div>
+        <label class="toggle-wrap"><input type="checkbox" id="privacy-email" onchange="savePrivacy('hideEmail',this.checked)"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="settings-item">
+        <div class="settings-item-left">
+          <div class="settings-item-icon"><i class="fa fa-phone"></i></div>
+          <div><div class="settings-item-name">Hide Phone</div><div class="settings-item-desc">Keep your phone number private</div></div>
+        </div>
+        <label class="toggle-wrap"><input type="checkbox" id="privacy-phone" onchange="savePrivacy('hidePhone',this.checked)"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="settings-item">
+        <div class="settings-item-left">
+          <div class="settings-item-icon"><i class="fa fa-location-dot"></i></div>
+          <div><div class="settings-item-name">Hide Address</div><div class="settings-item-desc">Keep your location private</div></div>
+        </div>
+        <label class="toggle-wrap"><input type="checkbox" id="privacy-address" onchange="savePrivacy('hideAddress',this.checked)"><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Account</div>
+      <div class="settings-item" onclick="doLogout()">
+        <div class="settings-item-left">
+          <div class="settings-item-icon danger"><i class="fa fa-right-from-bracket"></i></div>
+          <div><div class="settings-item-name">Sign Out</div></div>
+        </div>
+      </div>
+      <div class="settings-item" onclick="deleteAccount()">
+        <div class="settings-item-left">
+          <div class="settings-item-icon danger"><i class="fa fa-trash"></i></div>
+          <div><div class="settings-item-name" style="color:var(--danger)">Delete Account</div><div class="settings-item-desc">Permanently delete your profile</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div><!-- /page-settings -->
+
+<!-- ADMIN PANEL -->
+<div id="page-admin">
+  <div class="admin-wrap">
+    <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:1.5rem"><i class="fa fa-shield-halved" style="color:var(--accent)"></i> Admin Panel</h2>
+    <div class="admin-stats">
+      <div class="admin-stat-card"><div class="admin-stat-num" id="admin-total-users">—</div><div class="admin-stat-lbl">Total Users</div></div>
+      <div class="admin-stat-card"><div class="admin-stat-num" id="admin-total-views">—</div><div class="admin-stat-lbl">Total Views</div></div>
+    </div>
+    <div style="margin-bottom:1rem">
+      <input class="form-control" id="admin-search" placeholder="Search users…" oninput="adminSearch()" style="max-width:340px">
+    </div>
+    <div class="admin-users-table">
+      <div class="admin-table-header"><div>User</div><div>Username</div><div>Actions</div></div>
+      <div id="admin-users-list"></div>
+    </div>
+  </div>
+</div><!-- /page-admin -->
+
+<!-- 404 PAGE -->
+<div id="page-404">
+  <div class="err-big">404</div>
+  <div class="err-msg">This profile doesn't exist.</div>
+  <button class="btn-primary" style="width:auto;padding:.75rem 2rem" onclick="goHome()">Go Home</button>
+</div>
+
+</div><!-- /app -->
+
+<!-- ── MODALS ── -->
+
+<!-- EDIT PROFILE MODAL -->
+<div class="modal-overlay" id="modal-edit-profile">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Edit Profile</div>
+      <button class="modal-close" onclick="closeModal('modal-edit-profile')"><i class="fa fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input class="form-control" id="edit-name" placeholder="Your full name">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Title / Profession</label>
+        <input class="form-control" id="edit-title" placeholder="e.g. Web Developer">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Bio / Description</label>
+        <textarea class="form-control" id="edit-bio" placeholder="Tell the world about yourself…"></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input class="form-control" id="edit-email" type="email" placeholder="email@example.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone</label>
+          <input class="form-control" id="edit-phone" placeholder="+880…">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Address</label>
+        <input class="form-control" id="edit-address" placeholder="City, Country">
+      </div>
+      <div class="form-group">
+        <label class="form-label">WhatsApp</label>
+        <input class="form-control" id="edit-whatsapp" placeholder="+880…">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Telegram Username</label>
+        <input class="form-control" id="edit-telegram" placeholder="@username">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Website</label>
+        <input class="form-control" id="edit-website" placeholder="https://yoursite.com">
+      </div>
+
+      <!-- EDUCATION -->
+      <div style="margin-bottom:.5rem;font-size:.8rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text3)">Education</div>
+      <div id="edu-fields"></div>
+      <button type="button" onclick="addEduField()" style="display:flex;align-items:center;gap:6px;font-size:.8rem;font-weight:600;color:var(--accent);background:none;border:none;cursor:pointer;padding:.25rem 0;margin-bottom:1rem"><i class="fa fa-plus"></i> Add Education</button>
+
+      <!-- WORK -->
+      <div style="margin-bottom:.5rem;font-size:.8rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text3)">Work Experience</div>
+      <div id="work-fields"></div>
+      <button type="button" onclick="addWorkField()" style="display:flex;align-items:center;gap:6px;font-size:.8rem;font-weight:600;color:var(--accent);background:none;border:none;cursor:pointer;padding:.25rem 0;margin-bottom:1rem"><i class="fa fa-plus"></i> Add Work</button>
+
+      <!-- HOBBIES -->
+      <div style="margin-bottom:.5rem;font-size:.8rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text3)">Hobbies (comma separated)</div>
+      <input class="form-control" id="edit-hobbies" placeholder="Reading, Photography, Travel…" style="margin-bottom:1rem">
+
+      <!-- SOCIAL LINKS -->
+      <div style="margin-bottom:.75rem;font-size:.8rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text3)">Social Links</div>
+      <div id="social-fields"></div>
+
+      <button class="btn-primary" onclick="saveProfile()"><i class="fa fa-check"></i> Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- CHANGE USERNAME MODAL -->
+<div class="modal-overlay" id="modal-username">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Change Username</div>
+      <button class="modal-close" onclick="closeModal('modal-username')"><i class="fa fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">New Username</label>
+        <input class="form-control" id="new-username-input" placeholder="e.g. ibrahim" oninput="checkUsername()">
+        <div class="avail-msg" id="username-avail-msg"></div>
+      </div>
+      <div style="font-size:.75rem;color:var(--text3);margin-bottom:1rem">Only lowercase letters (a-z), numbers (0-9), and underscores (_) are allowed.</div>
+      <button class="btn-primary" onclick="changeUsername()"><i class="fa fa-check"></i> Update Username</button>
+    </div>
+  </div>
+</div>
+
+<!-- AVATAR UPLOAD MODAL -->
+<div class="modal-overlay" id="modal-avatar">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Change Profile Picture</div>
+      <button class="modal-close" onclick="closeModal('modal-avatar')"><i class="fa fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Select Image</label>
+        <input class="form-control" type="file" id="avatar-file-input" accept="image/*">
+      </div>
+      <button class="btn-primary" onclick="uploadAvatar()"><i class="fa fa-upload"></i> Upload</button>
+    </div>
+  </div>
+</div>
+
+<!-- COVER UPLOAD MODAL -->
+<div class="modal-overlay" id="modal-cover">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Change Cover Photo</div>
+      <button class="modal-close" onclick="closeModal('modal-cover')"><i class="fa fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Select Image</label>
+        <input class="form-control" type="file" id="cover-file-input" accept="image/*">
+      </div>
+      <button class="btn-primary" onclick="uploadCover()"><i class="fa fa-upload"></i> Upload</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHARE MODAL -->
+<div class="modal-overlay" id="modal-share">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Share Profile</div>
+      <button class="modal-close" onclick="closeModal('modal-share')"><i class="fa fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="share-url-box">
+        <div class="share-url" id="share-url-text"></div>
+        <button class="share-copy" onclick="copyProfileUrl()">Copy</button>
+      </div>
+      <canvas id="qr-canvas" width="180" height="180"></canvas>
+      <button class="btn-primary" onclick="downloadQR()" style="margin-bottom:1rem"><i class="fa fa-download"></i> Download QR Code</button>
+      <div class="share-platforms">
+        <div class="share-platform" onclick="shareTo('facebook')"><i class="fab fa-facebook" style="color:#1877f2"></i>Facebook</div>
+        <div class="share-platform" onclick="shareTo('messenger')"><i class="fab fa-facebook-messenger" style="color:#0084ff"></i>Messenger</div>
+        <div class="share-platform" onclick="shareTo('whatsapp')"><i class="fab fa-whatsapp" style="color:#25d366"></i>WhatsApp</div>
+        <div class="share-platform" onclick="shareTo('telegram')"><i class="fab fa-telegram" style="color:#26a5e4"></i>Telegram</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FOLLOW LIST MODAL -->
+<div class="modal-overlay" id="modal-follow-list">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-follow-title">Followers</div>
+      <button class="modal-close" onclick="closeModal('modal-follow-list')"><i class="fa fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="user-list" id="follow-list-content"></div>
+    </div>
+  </div>
+</div>
+
+<!-- QR.js polyfill (simple canvas QR) -->
+<script>
+// Minimal QR Code generator (public domain by Kazuhiko Arase adapted)
+// We'll use a CDN version
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<script type="module">
+const fb = window.__fb;
+const { auth, db, storage, provider, ref, set, get, update, onValue, push, remove,
+        serverTimestamp, query, orderByChild, equalTo,
+        sRef, uploadBytes, getDownloadURL,
+        signInWithPopup, signOut, onAuthStateChanged } = fb;
+
+// ─── STATE ───────────────────────────────────────────────
 let currentUser = null;
-let currentUserData = null;
-let viewingUID = null;
+let viewingUid = null;  // uid of profile being viewed
+let viewingData = null;
+let isOwnProfile = false;
 let allUsers = {};
-const ADMIN_UID = "ADMIN_UID_HERE"; // Set your admin UID
+let privacySettings = {};
+let qrInstance = null;
 
-window.app = app; window.auth = auth; window.db = db;
+// ─── INIT ─────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    document.getElementById('loading-screen').classList.add('hidden');
+  }, 1500);
 
-// ========================
-// AUTH
-// ========================
-window.signInWithGoogle = async () => {
+  onAuthStateChanged(auth, async user => {
+    if (user) {
+      currentUser = user;
+      document.getElementById('main-nav').style.display = 'flex';
+      await ensureUserProfile(user);
+      const urlUsername = getUrlUsername();
+      if (urlUsername) {
+        await loadProfileByUsername(urlUsername);
+      } else {
+        await loadOwnProfile();
+      }
+      document.getElementById('app').classList.add('visible');
+      showPage('profile');
+    } else {
+      currentUser = null;
+      document.getElementById('app').classList.remove('visible');
+      document.getElementById('main-nav').style.display = 'none';
+      const urlUsername = getUrlUsername();
+      if (urlUsername) {
+        // Public profile — load without login? Spec says login NOT required.
+        document.getElementById('app').classList.add('visible');
+        document.getElementById('main-nav').style.display = 'flex';
+        await loadProfileByUsername(urlUsername);
+        showPage('profile');
+      } else {
+        document.getElementById('page-login').classList.add('active');
+      }
+    }
+  });
+
+  // Theme
+  const saved = localStorage.getItem('cf-theme') || 'dark';
+  setTheme(saved);
+  document.getElementById('theme-toggle').checked = saved === 'dark';
+
+  // Search
+  document.getElementById('search-input').addEventListener('input', doSearch);
+  document.getElementById('search-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('search-overlay')) closeSearch();
+  });
+});
+
+function getUrlUsername() {
+  const path = window.location.pathname.replace(/^\//, '');
+  if (path && path !== 'index.html') return path;
+  return null;
+}
+
+// ─── AUTH ─────────────────────────────────────────────────
+window.doGoogleLogin = async () => {
   try {
-    const result = await signInWithPopup(auth, provider);
-    // profile created in onAuthStateChanged
-  } catch(e) {
-    showToast('Login failed: ' + e.message, 'error');
-  }
+    await signInWithPopup(auth, provider);
+  } catch(e) { showToast('Sign-in failed: ' + e.message, 'error'); }
 };
 
 window.doLogout = async () => {
   await signOut(auth);
-  showToast('Logged out');
-  navigateTo('login');
+  window.location.reload();
 };
 
 window.deleteAccount = async () => {
-  if(!confirm('Delete your account permanently? This cannot be undone.')) return;
+  if (!confirm('Are you sure? This will permanently delete your account and all data.')) return;
   const uid = currentUser.uid;
-  await remove(ref(db, 'users/' + uid));
-  await remove(ref(db, 'followers/' + uid));
-  await remove(ref(db, 'following/' + uid));
+  await remove(ref(db, `users/${uid}`));
+  await remove(ref(db, `followers/${uid}`));
+  await remove(ref(db, `following/${uid}`));
+  await remove(ref(db, `views/${uid}`));
   await currentUser.delete();
-  showToast('Account deleted');
-  navigateTo('login');
+  window.location.reload();
 };
 
-onAuthStateChanged(auth, async (user) => {
-  hideLoading();
-  if(user) {
-    currentUser = user;
-    document.getElementById('nav-avatar').src = user.photoURL || 'https://via.placeholder.com/32';
-    document.getElementById('nav-avatar').style.display = 'block';
-
-    // Create profile if first login
-    const snap = await get(ref(db, 'users/' + user.uid));
-    if(!snap.exists()) {
-      const uname = user.displayName?.toLowerCase().replace(/\s+/g,'').replace(/[^a-z0-9_]/g,'').substring(0,20) || 'user' + Date.now();
-      const profileData = {
-        uid: user.uid, name: user.displayName || 'User',
-        email: user.email, photoURL: user.photoURL || '',
-        coverURL: 'https://images.unsplash.com/photo-1557683316-973673baf926?w=800&q=80',
-        title: 'Digital Creator', bio: '', address: '', vibe: '',
-        username: uname, createdAt: Date.now(), verified: false, banned: false,
-        followers: 0, following: 0, views: 0
-      };
-      await set(ref(db, 'users/' + user.uid), profileData);
-      await set(ref(db, 'usernames/' + uname), user.uid);
+// ─── ENSURE PROFILE ON FIRST LOGIN ────────────────────────
+async function ensureUserProfile(user) {
+  const snap = await get(ref(db, `users/${user.uid}`));
+  if (!snap.exists()) {
+    // Generate username from display name
+    let base = (user.displayName || 'user').toLowerCase().replace(/[^a-z0-9_]/g,'').substring(0,20) || 'user';
+    let username = base;
+    let i = 1;
+    while (true) {
+      const usnap = await get(query(ref(db, 'users'), orderByChild('username'), equalTo(username)));
+      if (!usnap.exists()) break;
+      username = base + i++;
     }
-
-    const userData = (await get(ref(db, 'users/' + user.uid))).val();
-    currentUserData = userData;
-    if(userData.banned) { showToast('Your account is banned.','error'); await signOut(auth); return; }
-
-    document.getElementById('current-username-display').textContent = '@' + (userData.username || '');
-
-    if(user.uid === ADMIN_UID) {
-      document.getElementById('sb-admin').style.display = 'flex';
-      document.getElementById('admin-divider').style.display = 'block';
-    }
-
-    // Load own profile
-    viewingUID = user.uid;
-    await loadProfile(user.uid, true);
-    navigateTo('profile');
-    loadAllUsers();
-  } else {
-    currentUser = null; currentUserData = null;
-    document.getElementById('nav-avatar').style.display = 'none';
-    navigateTo('login');
+    await set(ref(db, `users/${user.uid}`), {
+      uid: user.uid,
+      name: user.displayName || 'New User',
+      username,
+      email: user.email,
+      photoURL: user.photoURL || '',
+      coverURL: '',
+      title: '',
+      bio: '',
+      address: '',
+      phone: '',
+      whatsapp: '',
+      telegram: '',
+      website: '',
+      verified: false,
+      banned: false,
+      isAdmin: false,
+      createdAt: serverTimestamp()
+    });
+    showToast('Welcome to CardForge! 🎉', 'success');
   }
-});
+}
 
-// ========================
-// PROFILE LOADING
-// ========================
-async function loadProfile(uid, isOwner) {
-  const snap = await get(ref(db, 'users/' + uid));
-  if(!snap.exists()) { navigateTo('404'); return; }
-  const data = snap.val();
-  currentUserData = isOwner ? data : currentUserData;
+// ─── LOAD PROFILE ─────────────────────────────────────────
+async function loadOwnProfile() {
+  const snap = await get(ref(db, `users/${currentUser.uid}`));
+  if (!snap.exists()) return;
+  viewingUid = currentUser.uid;
+  viewingData = snap.val();
+  isOwnProfile = true;
+  renderProfile(viewingData);
+  loadRealtimeProfile(viewingUid);
+  countView(viewingUid);
+  loadPrivacy();
+}
 
-  document.getElementById('cover-img').src = data.coverURL || 'https://images.unsplash.com/photo-1557683316-973673baf926?w=800&q=80';
-  document.getElementById('cover-name-badge').textContent = (data.name || '').toUpperCase();
-  document.getElementById('cover-vibe').textContent = data.vibe || 'Current vibe...';
-  document.getElementById('profile-avatar').src = data.photoURL || 'https://via.placeholder.com/90';
-  document.getElementById('profile-name').innerHTML = (data.name || 'Unknown') + (data.verified ? ' <span class="verified-badge"><i class="fa-solid fa-circle-check"></i></span>' : '');
-  document.getElementById('profile-title').textContent = 'Profile · ' + (data.title || '');
-  document.getElementById('profile-bio').textContent = data.bio || '';
-  document.getElementById('meta-title').textContent = data.title || '';
-  document.getElementById('meta-address').textContent = data.address || '';
+async function loadProfileByUsername(username) {
+  const q = query(ref(db, 'users'), orderByChild('username'), equalTo(username));
+  const snap = await get(q);
+  if (!snap.exists()) { showPage('404'); return; }
+  const uid = Object.keys(snap.val())[0];
+  viewingUid = uid;
+  viewingData = snap.val()[uid];
+  isOwnProfile = currentUser && currentUser.uid === uid;
+  renderProfile(viewingData);
+  loadRealtimeProfile(uid);
+  countView(uid);
+  if (isOwnProfile) loadPrivacy();
+}
 
-  // Stats
-  document.getElementById('followers-count').textContent = data.followers || 0;
-  document.getElementById('following-count').textContent = data.following || 0;
-  document.getElementById('views-count').textContent = data.views || 0;
-
-  // Edit buttons
-  document.getElementById('cover-actions').style.display = isOwner ? 'flex' : 'none';
-  document.getElementById('avatar-edit-btn').style.display = isOwner ? 'flex' : 'none';
-  document.getElementById('edit-profile-btn').style.display = isOwner ? 'inline-flex' : 'none';
-  document.getElementById('edu-edit-btn').style.display = isOwner ? 'inline-block' : 'none';
-  document.getElementById('work-edit-btn').style.display = isOwner ? 'inline-block' : 'none';
-  document.getElementById('hobby-edit-btn').style.display = isOwner ? 'inline-block' : 'none';
-  document.getElementById('contact-edit-btn').style.display = isOwner ? 'inline-block' : 'none';
-  document.getElementById('social-edit-btn').style.display = isOwner ? 'inline-block' : 'none';
-
-  // Follow btn
-  if(!isOwner && currentUser) {
-    document.getElementById('follow-btn').style.display = 'inline-flex';
-    updateFollowBtn(uid);
-  } else {
-    document.getElementById('follow-btn').style.display = 'none';
+function loadRealtimeProfile(uid) {
+  onValue(ref(db, `users/${uid}`), snap => {
+    if (!snap.exists()) return;
+    const d = snap.val();
+    viewingData = d;
+    document.getElementById('profile-name').textContent = d.name || '';
+    document.getElementById('profile-username').textContent = '@' + (d.username || '');
+    if (d.verified) document.getElementById('verified-badge').classList.remove('hidden');
+    else document.getElementById('verified-badge').classList.add('hidden');
+    if (d.photoURL) document.getElementById('profile-avatar').src = d.photoURL;
+    if (d.coverURL) { document.getElementById('cover-img').src = d.coverURL; document.getElementById('cover-img').classList.remove('hidden'); document.getElementById('cover-placeholder').style.display='none'; }
+  });
+  onValue(ref(db, `followers/${uid}`), snap => {
+    document.getElementById('stat-followers').textContent = snap.exists() ? Object.keys(snap.val()).length : 0;
+  });
+  onValue(ref(db, `following/${uid}`), snap => {
+    document.getElementById('stat-following').textContent = snap.exists() ? Object.keys(snap.val()).length : 0;
+  });
+  onValue(ref(db, `views/${uid}`), snap => {
+    document.getElementById('stat-views').textContent = snap.exists() ? Object.keys(snap.val()).length : 0;
+  });
+  // Education
+  onValue(ref(db, `education/${uid}`), snap => renderEdu(snap.val() || {}));
+  // Work
+  onValue(ref(db, `work/${uid}`), snap => renderWork(snap.val() || {}));
+  // Hobbies
+  onValue(ref(db, `hobbies/${uid}`), snap => renderHobbies(snap.val() || []));
+  // Social
+  onValue(ref(db, `socialLinks/${uid}`), snap => renderSocial(snap.val() || {}));
+  // Contacts
+  onValue(ref(db, `contacts/${uid}`), snap => renderContacts(snap.val() || {}));
+  // Follow button state
+  if (currentUser && !isOwnProfile) {
+    onValue(ref(db, `followers/${uid}/${currentUser.uid}`), snap => {
+      const btn = document.getElementById('btn-follow');
+      btn.style.display = '';
+      btn.textContent = snap.exists() ? 'Following' : 'Follow';
+      btn.className = snap.exists() ? 'btn-follow following' : 'btn-follow';
+    });
   }
+}
 
-  // View count
-  if(!isOwner && currentUser) {
-    const viewKey = currentUser.uid;
-    const viewSnap = await get(ref(db, 'views/' + uid + '/' + viewKey));
-    if(!viewSnap.exists()) {
-      await set(ref(db, 'views/' + uid + '/' + viewKey), true);
-      await update(ref(db, 'users/' + uid), { views: increment(1) });
-    }
+function renderProfile(d) {
+  document.getElementById('profile-name').textContent = d.name || '';
+  document.getElementById('profile-username').textContent = '@' + (d.username || '');
+  if (d.photoURL) document.getElementById('profile-avatar').src = d.photoURL;
+  if (d.coverURL) { document.getElementById('cover-img').src = d.coverURL; document.getElementById('cover-img').classList.remove('hidden'); document.getElementById('cover-placeholder').style.display='none'; }
+  if (d.title) { document.getElementById('profile-title').textContent = d.title; document.getElementById('profile-title-wrap').classList.remove('hidden'); }
+  if (d.bio) { document.getElementById('profile-bio').textContent = d.bio; document.getElementById('profile-bio').classList.remove('hidden'); }
+  // Info list
+  const infoEl = document.getElementById('profile-info-list');
+  infoEl.innerHTML = '';
+  if (d.address) infoEl.innerHTML += `<div class="info-item"><i class="fa fa-location-dot"></i><span>${d.address}</span></div>`;
+  if (d.email && !privacySettings.hideEmail) infoEl.innerHTML += `<div class="info-item"><i class="fa fa-envelope"></i><span>${d.email}</span></div>`;
+  if (d.phone && !privacySettings.hidePhone) infoEl.innerHTML += `<div class="info-item"><i class="fa fa-phone"></i><span>${d.phone}</span></div>`;
+  // own profile controls
+  if (isOwnProfile) {
+    document.getElementById('avatar-edit-btn').style.display = 'flex';
+    document.getElementById('cover-edit-btn').style.display = 'flex';
   }
-
-  loadEducation(uid);
-  loadWork(uid);
-  loadHobbies(uid);
-  loadContact(uid, data);
-  loadSocial(uid);
-  loadFollowers(uid);
-  loadFollowing(uid);
+  // show follow btn only for others
+  if (currentUser && !isOwnProfile) {
+    document.getElementById('btn-follow').style.display = '';
+  }
+  // admin btn
+  if (d.isAdmin) { document.getElementById('sidebar-admin-btn').style.display = ''; document.getElementById('sidebar-admin-sep').style.display = ''; }
+  // banned overlay
+  if (d.banned) { showToast('This account has been suspended.', 'error'); }
+  document.getElementById('settings-username-display').textContent = '@' + (d.username || '');
 }
 
-window.loadProfile = loadProfile;
-
-// ========================
-// EDUCATION
-// ========================
-async function loadEducation(uid) {
-  const snap = await get(ref(db, 'education/' + uid));
-  const list = document.getElementById('education-list');
-  if(snap.exists()) {
-    const data = snap.val();
-    const items = Object.values(data);
-    list.innerHTML = items.map(e => `
-      <div class="about-item">
-        <div class="about-icon"><i class="fa-solid fa-graduation-cap"></i></div>
-        <div class="about-text">
-          <div class="title">${e.institution || ''}</div>
-          <div class="sub">${e.degree || ''} · ${e.year || ''}</div>
-        </div>
-      </div>`).join('');
-  } else { list.innerHTML = '<p style="color:var(--text-secondary);font-size:13px">No education added.</p>'; }
+// ─── VIEW COUNTER ─────────────────────────────────────────
+async function countView(uid) {
+  if (isOwnProfile) return;
+  const viewKey = uid + '_' + (currentUser ? currentUser.uid : 'anon_' + navigator.userAgent.slice(0,10));
+  const sid = sessionStorage.getItem('cf_viewed_' + uid);
+  if (sid) return;
+  sessionStorage.setItem('cf_viewed_' + uid, '1');
+  await set(ref(db, `views/${uid}/${viewKey.replace(/[.#$\[\]]/g,'_')}`), true);
 }
 
-// ========================
-// WORK
-// ========================
-async function loadWork(uid) {
-  const snap = await get(ref(db, 'work/' + uid));
-  const list = document.getElementById('work-list');
-  if(snap.exists()) {
-    const items = Object.values(snap.val());
-    list.innerHTML = items.map(w => `
-      <div class="about-item">
-        <div class="about-icon"><i class="fa-solid fa-building"></i></div>
-        <div class="about-text">
-          <div class="title">${w.company || ''}</div>
-          <div class="sub">${w.position || ''} · ${w.year || ''}</div>
-        </div>
-      </div>`).join('');
-  } else { list.innerHTML = '<p style="color:var(--text-secondary);font-size:13px">No work added.</p>'; }
-}
-
-// ========================
-// HOBBIES
-// ========================
-async function loadHobbies(uid) {
-  const snap = await get(ref(db, 'hobbies/' + uid));
-  const list = document.getElementById('hobbies-list');
-  if(snap.exists()) {
-    const hobbies = snap.val().list || [];
-    list.innerHTML = hobbies.map(h => `<span class="hobby-tag">${h}</span>`).join('');
-  } else { list.innerHTML = '<p style="color:var(--text-secondary);font-size:13px">No hobbies added.</p>'; }
-}
-
-// ========================
-// CONTACT
-// ========================
-async function loadContact(uid, userData) {
-  const snap = await get(ref(db, 'contacts/' + uid));
-  const settingsSnap = await get(ref(db, 'settings/' + uid));
-  const privacy = settingsSnap.exists() ? settingsSnap.val() : {};
-  const list = document.getElementById('contact-list');
-  const contact = snap.exists() ? snap.val() : {};
-  const isOwner = currentUser && currentUser.uid === uid;
-
-  const items = [
-    {key:'email', icon:'fa-envelope', label:'Email', value: contact.email || userData?.email, hidden: privacy.hideEmail && !isOwner},
-    {key:'phone', icon:'fa-phone', label:'Phone', value: contact.phone, hidden: privacy.hidePhone && !isOwner},
-    {key:'whatsapp', icon:'fa-brands fa-whatsapp', label:'WhatsApp', value: contact.whatsapp},
-    {key:'telegram', icon:'fa-brands fa-telegram', label:'Telegram', value: contact.telegram},
-    {key:'website', icon:'fa-globe', label:'Website', value: contact.website},
-  ];
-  list.innerHTML = items.filter(i => i.value && !i.hidden).map(i => `
-    <div class="contact-item">
-      <div class="contact-icon"><i class="fa-solid ${i.icon}"></i></div>
-      <div class="contact-text"><div class="label">${i.label}</div><div class="value">${i.value}</div></div>
-    </div>`).join('') || '<p style="color:var(--text-secondary);font-size:13px">No contact info added.</p>';
-}
-
-// ========================
-// SOCIAL
-// ========================
-const SOCIAL_META = {
-  facebook:{icon:'fa-brands fa-facebook',label:'Facebook',color:'#1877f2'},
-  instagram:{icon:'fa-brands fa-instagram',label:'Instagram',color:'#e1306c'},
-  twitter:{icon:'fa-brands fa-x-twitter',label:'X / Twitter',color:'#ffffff'},
-  threads:{icon:'fa-brands fa-threads',label:'Threads',color:'#ffffff'},
-  linkedin:{icon:'fa-brands fa-linkedin',label:'LinkedIn',color:'#0a66c2'},
-  tiktok:{icon:'fa-brands fa-tiktok',label:'TikTok',color:'#ffffff'},
-  youtube:{icon:'fa-brands fa-youtube',label:'YouTube',color:'#ff0000'},
-  telegram:{icon:'fa-brands fa-telegram',label:'Telegram',color:'#0088cc'},
-  whatsapp:{icon:'fa-brands fa-whatsapp',label:'WhatsApp',color:'#25d366'},
-  github:{icon:'fa-brands fa-github',label:'GitHub',color:'#ffffff'},
-  discord:{icon:'fa-brands fa-discord',label:'Discord',color:'#5865f2'},
-  snapchat:{icon:'fa-brands fa-snapchat',label:'Snapchat',color:'#fffc00'},
-  pinterest:{icon:'fa-brands fa-pinterest',label:'Pinterest',color:'#e60023'},
+// ─── TABS ─────────────────────────────────────────────────
+window.switchTab = id => {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab===id));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id==='tab-'+id));
 };
 
-async function loadSocial(uid) {
-  const snap = await get(ref(db, 'socialLinks/' + uid));
-  const grid = document.getElementById('social-grid');
-  if(snap.exists()) {
-    const links = snap.val();
-    const html = Object.entries(links).filter(([k,v])=>v).map(([k,v])=>{
-      const m = SOCIAL_META[k]; if(!m) return '';
-      return `<a href="${v}" target="_blank" class="social-item"><i class="${m.icon}" style="color:${m.color}"></i>${m.label}</a>`;
-    }).join('');
-    grid.innerHTML = html || '<p style="color:var(--text-secondary);font-size:13px">No social links added.</p>';
-  } else { grid.innerHTML = '<p style="color:var(--text-secondary);font-size:13px">No social links added.</p>'; }
+// ─── EDUCATION ────────────────────────────────────────────
+function renderEdu(data) {
+  const el = document.getElementById('edu-list');
+  el.innerHTML = '';
+  Object.values(data).forEach(e => {
+    el.innerHTML += `<div class="about-entry"><div class="about-entry-icon"><i class="fa fa-graduation-cap"></i></div><div class="about-entry-info"><div class="about-entry-main">${e.institution||''}</div><div class="about-entry-sub">${e.degree||''}</div><div class="about-entry-year">${e.year||''}</div></div></div>`;
+  });
+  if (!Object.keys(data).length) el.innerHTML = '<div style="font-size:.82rem;color:var(--text3)">No education added yet.</div>';
 }
 
-// ========================
-// FOLLOWERS / FOLLOWING
-// ========================
-async function loadFollowers(uid) {
-  const snap = await get(ref(db, 'followers/' + uid));
-  const list = document.getElementById('followers-list');
-  if(snap.exists()) {
-    const uids = Object.keys(snap.val());
-    const html = await Promise.all(uids.map(async fuid => {
-      const usnap = await get(ref(db,'users/'+fuid));
-      if(!usnap.exists()) return '';
-      const u = usnap.val();
-      return `<a class="follower-item" onclick="viewProfile('${fuid}')">
-        <img src="${u.photoURL||'https://via.placeholder.com/44'}" alt="">
-        <div><div class="name">${u.name||''}</div><div class="uname">@${u.username||''}</div></div>
-      </a>`;
-    }));
-    list.innerHTML = html.join('') || '<p style="color:var(--text-secondary);font-size:13px;text-align:center;padding:20px">No followers yet.</p>';
-  } else { list.innerHTML = '<p style="color:var(--text-secondary);font-size:13px;text-align:center;padding:20px">No followers yet.</p>'; }
+function renderWork(data) {
+  const el = document.getElementById('work-list');
+  el.innerHTML = '';
+  Object.values(data).forEach(w => {
+    el.innerHTML += `<div class="about-entry"><div class="about-entry-icon"><i class="fa fa-briefcase"></i></div><div class="about-entry-info"><div class="about-entry-main">${w.company||''}</div><div class="about-entry-sub">${w.position||''}</div><div class="about-entry-year">${w.year||''}</div></div></div>`;
+  });
+  if (!Object.keys(data).length) el.innerHTML = '<div style="font-size:.82rem;color:var(--text3)">No work experience added yet.</div>';
 }
 
-async function loadFollowing(uid) {
-  const snap = await get(ref(db, 'following/' + uid));
-  const list = document.getElementById('following-list');
-  if(snap.exists()) {
-    const uids = Object.keys(snap.val());
-    const html = await Promise.all(uids.map(async fuid => {
-      const usnap = await get(ref(db,'users/'+fuid));
-      if(!usnap.exists()) return '';
-      const u = usnap.val();
-      return `<a class="follower-item" onclick="viewProfile('${fuid}')">
-        <img src="${u.photoURL||'https://via.placeholder.com/44'}" alt="">
-        <div><div class="name">${u.name||''}</div><div class="uname">@${u.username||''}</div></div>
-      </a>`;
-    }));
-    list.innerHTML = html.join('') || '<p style="color:var(--text-secondary);font-size:13px;text-align:center;padding:20px">Not following anyone.</p>';
-  } else { list.innerHTML = '<p style="color:var(--text-secondary);font-size:13px;text-align:center;padding:20px">Not following anyone.</p>'; }
+function renderHobbies(data) {
+  const el = document.getElementById('hobby-list');
+  const list = Array.isArray(data) ? data : Object.values(data);
+  el.innerHTML = list.map(h => `<div class="hobby-chip">${h}</div>`).join('') || '<div style="font-size:.82rem;color:var(--text3)">No hobbies added yet.</div>';
 }
 
-window.viewProfile = async (uid) => {
-  viewingUID = uid;
-  const isOwner = currentUser && currentUser.uid === uid;
-  await loadProfile(uid, isOwner);
-  navigateTo('profile');
-  closeSidebar();
-};
+// ─── SOCIAL ───────────────────────────────────────────────
+const SOCIAL_DEFS = [
+  { key:'facebook', label:'Facebook', icon:'fab fa-facebook', color:'#1877f2', prefix:'https://facebook.com/' },
+  { key:'instagram', label:'Instagram', icon:'fab fa-instagram', color:'#e1306c', prefix:'https://instagram.com/' },
+  { key:'twitter', label:'X / Twitter', icon:'fab fa-x-twitter', color:'#000', prefix:'https://x.com/' },
+  { key:'threads', label:'Threads', icon:'fab fa-threads', color:'#101010', prefix:'https://threads.net/@' },
+  { key:'linkedin', label:'LinkedIn', icon:'fab fa-linkedin', color:'#0a66c2', prefix:'https://linkedin.com/in/' },
+  { key:'tiktok', label:'TikTok', icon:'fab fa-tiktok', color:'#010101', prefix:'https://tiktok.com/@' },
+  { key:'youtube', label:'YouTube', icon:'fab fa-youtube', color:'#ff0000', prefix:'https://youtube.com/@' },
+  { key:'telegram', label:'Telegram', icon:'fab fa-telegram', color:'#26a5e4', prefix:'https://t.me/' },
+  { key:'whatsapp', label:'WhatsApp', icon:'fab fa-whatsapp', color:'#25d366', prefix:'https://wa.me/' },
+  { key:'github', label:'GitHub', icon:'fab fa-github', color:'#333', prefix:'https://github.com/' },
+  { key:'discord', label:'Discord', icon:'fab fa-discord', color:'#5865f2', prefix:'https://discord.gg/' },
+  { key:'snapchat', label:'Snapchat', icon:'fab fa-snapchat', color:'#fffc00', prefix:'https://snapchat.com/add/' },
+  { key:'pinterest', label:'Pinterest', icon:'fab fa-pinterest', color:'#e60023', prefix:'https://pinterest.com/' },
+];
 
-// ========================
-// FOLLOW SYSTEM
-// ========================
-async function updateFollowBtn(uid) {
-  if(!currentUser) return;
-  const snap = await get(ref(db, 'followers/' + uid + '/' + currentUser.uid));
-  const btn = document.getElementById('follow-btn');
-  if(snap.exists()) {
-    btn.textContent = 'Unfollow';
-    btn.className = 'btn btn-outline';
-  } else {
-    btn.textContent = 'Follow';
-    btn.className = 'btn btn-primary';
-  }
+function renderSocial(data) {
+  const el = document.getElementById('social-grid');
+  const active = SOCIAL_DEFS.filter(d => data[d.key]);
+  if (!active.length) { el.innerHTML = '<div style="font-size:.82rem;color:var(--text3)">No social links added yet.</div>'; return; }
+  el.innerHTML = active.map(d => `
+    <a class="social-item" href="${d.prefix}${data[d.key]}" target="_blank" rel="noopener">
+      <div class="social-icon" style="background:${d.color}1a;color:${d.color}"><i class="${d.icon}"></i></div>
+      <div><div class="social-name">${d.label}</div><div class="social-handle">${data[d.key]}</div></div>
+    </a>`).join('');
 }
 
+function renderContacts(data) {
+  const el = document.getElementById('contact-list');
+  const items = [];
+  if (data.email) items.push({icon:'fa fa-envelope',color:'#f6b544',label:'Email',value:data.email,href:`mailto:${data.email}`});
+  if (data.phone) items.push({icon:'fa fa-phone',color:'#4ef09c',label:'Phone',value:data.phone,href:`tel:${data.phone}`});
+  if (data.whatsapp) items.push({icon:'fab fa-whatsapp',color:'#25d366',label:'WhatsApp',value:data.whatsapp,href:`https://wa.me/${data.whatsapp}`});
+  if (data.telegram) items.push({icon:'fab fa-telegram',color:'#26a5e4',label:'Telegram',value:data.telegram,href:`https://t.me/${data.telegram}`});
+  if (data.website) items.push({icon:'fa fa-globe',color:'#a78bfa',label:'Website',value:data.website,href:data.website});
+  if (!items.length) { el.innerHTML = '<div style="font-size:.82rem;color:var(--text3)">No contact info added yet.</div>'; return; }
+  el.innerHTML = items.map(i => `
+    <a class="contact-item" href="${i.href}" target="_blank" rel="noopener">
+      <div class="contact-icon" style="background:${i.color}1a;color:${i.color}"><i class="${i.icon}"></i></div>
+      <div class="contact-info"><div class="contact-label">${i.label}</div><div class="contact-value">${i.value}</div></div>
+      <i class="fa fa-external-link" style="color:var(--text3);font-size:.8rem"></i>
+    </a>`).join('');
+}
+
+// ─── FOLLOW ───────────────────────────────────────────────
 window.toggleFollow = async () => {
-  if(!currentUser || !viewingUID) return;
-  const targetUID = viewingUID;
-  const myUID = currentUser.uid;
-  const followerRef = ref(db, 'followers/' + targetUID + '/' + myUID);
-  const followingRef = ref(db, 'following/' + myUID + '/' + targetUID);
-  const snap = await get(followerRef);
-  if(snap.exists()) {
-    await remove(followerRef); await remove(followingRef);
-    await update(ref(db,'users/'+targetUID), {followers: increment(-1)});
-    await update(ref(db,'users/'+myUID), {following: increment(-1)});
-    showToast('Unfollowed');
+  if (!currentUser) { showToast('Please sign in to follow', 'error'); return; }
+  const uid = viewingUid;
+  const me = currentUser.uid;
+  const followRef = ref(db, `followers/${uid}/${me}`);
+  const followingRef = ref(db, `following/${me}/${uid}`);
+  const snap = await get(followRef);
+  if (snap.exists()) {
+    await remove(followRef); await remove(followingRef);
   } else {
-    await set(followerRef, true); await set(followingRef, true);
-    await update(ref(db,'users/'+targetUID), {followers: increment(1)});
-    await update(ref(db,'users/'+myUID), {following: increment(1)});
-    showToast('Following!', 'success');
-  }
-  updateFollowBtn(targetUID);
-  // Refresh counts
-  const updated = (await get(ref(db,'users/'+targetUID))).val();
-  document.getElementById('followers-count').textContent = updated.followers || 0;
-};
-
-// ========================
-// EDIT PROFILE SAVE
-// ========================
-window.openEditModal = (type) => {
-  if(!currentUser) return;
-  const uid = currentUser.uid;
-  if(type === 'profile') {
-    document.getElementById('edit-name').value = currentUserData?.name || '';
-    document.getElementById('edit-title').value = currentUserData?.title || '';
-    document.getElementById('edit-bio').value = currentUserData?.bio || '';
-    document.getElementById('edit-address').value = currentUserData?.address || '';
-    document.getElementById('edit-vibe').value = currentUserData?.vibe || '';
-    document.getElementById('modal-profile').classList.add('open');
-  } else if(type === 'avatar') {
-    document.getElementById('avatar-preview').src = currentUserData?.photoURL || '';
-    document.getElementById('avatar-url').value = '';
-    document.getElementById('modal-avatar').classList.add('open');
-  } else if(type === 'cover') {
-    document.getElementById('cover-url').value = currentUserData?.coverURL || '';
-    document.getElementById('modal-cover').classList.add('open');
-  } else if(type === 'education') {
-    loadEduModal(uid);
-    document.getElementById('modal-education').classList.add('open');
-  } else if(type === 'work') {
-    loadWorkModal(uid);
-    document.getElementById('modal-work').classList.add('open');
-  } else if(type === 'hobbies') {
-    loadHobbiesModal(uid);
-    document.getElementById('modal-hobbies').classList.add('open');
-  } else if(type === 'contact') {
-    loadContactModal(uid);
-    document.getElementById('modal-contact').classList.add('open');
-  } else if(type === 'social') {
-    loadSocialModal(uid);
-    document.getElementById('modal-social').classList.add('open');
-  } else if(type === 'username') {
-    document.getElementById('new-username').value = currentUserData?.username || '';
-    document.getElementById('username-availability-msg').textContent = '';
-    document.getElementById('modal-username').classList.add('open');
+    await set(followRef, true); await set(followingRef, true);
   }
 };
 
-window.saveProfile = async () => {
-  const uid = currentUser.uid;
-  const updates = {
-    name: document.getElementById('edit-name').value.trim(),
-    title: document.getElementById('edit-title').value.trim(),
-    bio: document.getElementById('edit-bio').value.trim(),
-    address: document.getElementById('edit-address').value.trim(),
-    vibe: document.getElementById('edit-vibe').value.trim(),
-  };
-  await update(ref(db,'users/'+uid), updates);
-  Object.assign(currentUserData, updates);
-  await loadProfile(uid, true);
-  document.getElementById('modal-profile').classList.remove('open');
-  showToast('Profile updated!', 'success');
-};
-
-window.previewAvatar = (e) => {
-  const file = e.target.files[0]; if(!file) return;
-  const reader = new FileReader();
-  reader.onload = r => { document.getElementById('avatar-preview').src = r.target.result; document.getElementById('avatar-url').value = r.target.result; };
-  reader.readAsDataURL(file);
-};
-
-window.saveAvatar = async () => {
-  const url = document.getElementById('avatar-url').value.trim() || document.getElementById('avatar-preview').src;
-  if(!url) return;
-  await update(ref(db,'users/'+currentUser.uid), {photoURL: url});
-  currentUserData.photoURL = url;
-  document.getElementById('profile-avatar').src = url;
-  document.getElementById('nav-avatar').src = url;
-  document.getElementById('modal-avatar').classList.remove('open');
-  showToast('Profile photo updated!', 'success');
-};
-
-window.previewCover = (e) => {
-  const file = e.target.files[0]; if(!file) return;
-  const reader = new FileReader();
-  reader.onload = r => {
-    document.getElementById('cover-url').value = r.target.result;
-    document.getElementById('cover-preview').src = r.target.result;
-    document.getElementById('cover-preview-wrap').style.display = 'block';
-  };
-  reader.readAsDataURL(file);
-};
-
-window.saveCover = async () => {
-  const url = document.getElementById('cover-url').value.trim();
-  if(!url) return;
-  await update(ref(db,'users/'+currentUser.uid), {coverURL: url});
-  currentUserData.coverURL = url;
-  document.getElementById('cover-img').src = url;
-  document.getElementById('modal-cover').classList.remove('open');
-  showToast('Cover photo updated!', 'success');
-};
-
-// EDUCATION MODAL
-async function loadEduModal(uid) {
-  const snap = await get(ref(db,'education/'+uid));
-  const entries = document.getElementById('edu-entries');
-  let items = snap.exists() ? Object.entries(snap.val()) : [];
-  entries.innerHTML = '';
-  if(items.length === 0) addEduEntry();
-  else items.forEach(([key,e]) => addEduEntry(e, key));
-}
-
-window.addEduEntry = (data={}, key='') => {
-  const div = document.createElement('div');
-  div.style.cssText = 'border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;position:relative';
-  div.dataset.key = key;
-  div.innerHTML = `
-    <button onclick="this.parentElement.remove()" style="position:absolute;top:8px;right:8px;background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:14px"><i class="fa-solid fa-trash"></i></button>
-    <div class="form-group"><label class="form-label">Institution</label><input class="form-input edu-inst" value="${data.institution||''}" placeholder="School/College name"></div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">Degree</label><input class="form-input edu-deg" value="${data.degree||''}" placeholder="Degree"></div>
-      <div class="form-group"><label class="form-label">Year</label><input class="form-input edu-year" value="${data.year||''}" placeholder="2020-2024"></div>
+window.openFollowList = async type => {
+  document.getElementById('modal-follow-title').textContent = type === 'followers' ? 'Followers' : 'Following';
+  const el = document.getElementById('follow-list-content');
+  el.innerHTML = '<div style="color:var(--text3)">Loading…</div>';
+  openModal('modal-follow-list');
+  const snap = await get(ref(db, `${type}/${viewingUid}`));
+  const uids = snap.exists() ? Object.keys(snap.val()) : [];
+  if (!uids.length) { el.innerHTML = '<div style="font-size:.85rem;color:var(--text3)">No one here yet.</div>'; return; }
+  el.innerHTML = '';
+  for (const uid of uids) {
+    const us = await get(ref(db, `users/${uid}`));
+    if (!us.exists()) continue;
+    const d = us.val();
+    el.innerHTML += `<div class="user-list-item" onclick="visitProfile('${d.username}')">
+      <img class="user-list-avatar" src="${d.photoURL||''}" alt="">
+      <div><div class="user-list-name">${d.name||''}</div><div class="user-list-username">@${d.username||''}</div></div>
     </div>`;
-  document.getElementById('edu-entries').appendChild(div);
+  }
 };
 
-window.saveEducation = async () => {
-  const uid = currentUser.uid;
-  await remove(ref(db,'education/'+uid));
-  document.querySelectorAll('#edu-entries > div').forEach(async div => {
-    const inst = div.querySelector('.edu-inst').value.trim();
-    if(!inst) return;
-    const newRef = push(ref(db,'education/'+uid));
-    await set(newRef, {institution:inst, degree:div.querySelector('.edu-deg').value.trim(), year:div.querySelector('.edu-year').value.trim()});
-  });
-  setTimeout(() => loadEducation(uid), 500);
-  document.getElementById('modal-education').classList.remove('open');
-  showToast('Education saved!', 'success');
+window.visitProfile = username => {
+  closeModal('modal-follow-list'); closeModal('modal-follow-list');
+  window.location.href = '/' + username;
 };
 
-// WORK MODAL
-async function loadWorkModal(uid) {
-  const snap = await get(ref(db,'work/'+uid));
-  const entries = document.getElementById('work-entries');
-  let items = snap.exists() ? Object.entries(snap.val()) : [];
-  entries.innerHTML = '';
-  if(items.length === 0) addWorkEntry();
-  else items.forEach(([key,w]) => addWorkEntry(w));
-}
-
-window.addWorkEntry = (data={}) => {
-  const div = document.createElement('div');
-  div.style.cssText = 'border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;position:relative';
-  div.innerHTML = `
-    <button onclick="this.parentElement.remove()" style="position:absolute;top:8px;right:8px;background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:14px"><i class="fa-solid fa-trash"></i></button>
-    <div class="form-group"><label class="form-label">Company</label><input class="form-input work-co" value="${data.company||''}" placeholder="Company name"></div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">Position</label><input class="form-input work-pos" value="${data.position||''}" placeholder="Role"></div>
-      <div class="form-group"><label class="form-label">Year</label><input class="form-input work-yr" value="${data.year||''}" placeholder="2021-Present"></div>
-    </div>`;
-  document.getElementById('work-entries').appendChild(div);
-};
-
-window.saveWork = async () => {
-  const uid = currentUser.uid;
-  await remove(ref(db,'work/'+uid));
-  document.querySelectorAll('#work-entries > div').forEach(async div => {
-    const co = div.querySelector('.work-co').value.trim();
-    if(!co) return;
-    const newRef = push(ref(db,'work/'+uid));
-    await set(newRef, {company:co, position:div.querySelector('.work-pos').value.trim(), year:div.querySelector('.work-yr').value.trim()});
-  });
-  setTimeout(() => loadWork(uid), 500);
-  document.getElementById('modal-work').classList.remove('open');
-  showToast('Work experience saved!', 'success');
-};
-
-// HOBBIES MODAL
-async function loadHobbiesModal(uid) {
-  const snap = await get(ref(db,'hobbies/'+uid));
-  const list = snap.exists() ? (snap.val().list || []) : [];
-  document.getElementById('hobbies-input').value = list.join(', ');
-}
-
-window.saveHobbies = async () => {
-  const uid = currentUser.uid;
-  const val = document.getElementById('hobbies-input').value;
-  const list = val.split(',').map(h=>h.trim()).filter(Boolean);
-  await set(ref(db,'hobbies/'+uid), {list});
-  loadHobbies(uid);
-  document.getElementById('modal-hobbies').classList.remove('open');
-  showToast('Hobbies saved!', 'success');
-};
-
-// CONTACT MODAL
-async function loadContactModal(uid) {
-  const snap = await get(ref(db,'contacts/'+uid));
-  const c = snap.exists() ? snap.val() : {};
-  document.getElementById('c-email').value = c.email || currentUserData?.email || '';
-  document.getElementById('c-phone').value = c.phone || '';
-  document.getElementById('c-whatsapp').value = c.whatsapp || '';
-  document.getElementById('c-telegram').value = c.telegram || '';
-  document.getElementById('c-website').value = c.website || '';
-}
-
-window.saveContact = async () => {
-  const uid = currentUser.uid;
-  await set(ref(db,'contacts/'+uid), {
-    email: document.getElementById('c-email').value.trim(),
-    phone: document.getElementById('c-phone').value.trim(),
-    whatsapp: document.getElementById('c-whatsapp').value.trim(),
-    telegram: document.getElementById('c-telegram').value.trim(),
-    website: document.getElementById('c-website').value.trim(),
-  });
-  loadContact(uid, currentUserData);
-  document.getElementById('modal-contact').classList.remove('open');
-  showToast('Contact info saved!', 'success');
-};
-
-// SOCIAL MODAL
-async function loadSocialModal(uid) {
-  const snap = await get(ref(db,'socialLinks/'+uid));
-  const s = snap.exists() ? snap.val() : {};
-  Object.keys(SOCIAL_META).forEach(k => {
-    const el = document.getElementById('s-'+k);
-    if(el) el.value = s[k] || '';
-  });
-}
-
-window.saveSocial = async () => {
-  const uid = currentUser.uid;
-  const data = {};
-  Object.keys(SOCIAL_META).forEach(k => {
-    const el = document.getElementById('s-'+k);
-    if(el) data[k] = el.value.trim();
-  });
-  await set(ref(db,'socialLinks/'+uid), data);
-  loadSocial(uid);
-  document.getElementById('modal-social').classList.remove('open');
-  showToast('Social links saved!', 'success');
-};
-
-// USERNAME
-let usernameCheckTimer;
-window.checkUsernameAvailability = (val) => {
-  clearTimeout(usernameCheckTimer);
-  const msg = document.getElementById('username-availability-msg');
-  if(!val) { msg.textContent=''; return; }
-  if(!/^[a-z0-9_]+$/.test(val)) { msg.textContent='Only a-z, 0-9, _ allowed'; msg.className='availability-msg err'; return; }
-  msg.textContent='Checking...'; msg.className='availability-msg';
-  usernameCheckTimer = setTimeout(async () => {
-    if(val === currentUserData?.username) { msg.textContent='Your current username'; msg.className='availability-msg ok'; return; }
-    const snap = await get(ref(db,'usernames/'+val));
-    if(snap.exists()) { msg.textContent='Username taken'; msg.className='availability-msg err'; }
-    else { msg.textContent='Available!'; msg.className='availability-msg ok'; }
-  }, 600);
-};
-
-window.saveUsername = async () => {
-  const val = document.getElementById('new-username').value.trim();
-  const msg = document.getElementById('username-availability-msg');
-  if(!val || !/^[a-z0-9_]+$/.test(val)) { showToast('Invalid username','error'); return; }
-  if(val === currentUserData?.username) { document.getElementById('modal-username').classList.remove('open'); return; }
-  const snap = await get(ref(db,'usernames/'+val));
-  if(snap.exists()) { showToast('Username taken','error'); return; }
-  // Delete old username
-  if(currentUserData?.username) await remove(ref(db,'usernames/'+currentUserData.username));
-  await set(ref(db,'usernames/'+val), currentUser.uid);
-  await update(ref(db,'users/'+currentUser.uid), {username: val});
-  currentUserData.username = val;
-  document.getElementById('current-username-display').textContent = '@'+val;
-  document.getElementById('modal-username').classList.remove('open');
-  showToast('Username updated!', 'success');
-};
-
-// PRIVACY SETTINGS
-window.togglePrivacy = async (key) => {
-  if(!currentUser) return;
-  const uid = currentUser.uid;
-  const snap = await get(ref(db,'settings/'+uid));
-  const settings = snap.exists() ? snap.val() : {};
-  settings[key] = !settings[key];
-  await set(ref(db,'settings/'+uid), settings);
-  document.getElementById('toggle-hide-'+key.replace('hide','').toLowerCase()).classList.toggle('on', !!settings[key]);
-};
-
-async function loadPrivacySettings() {
-  if(!currentUser) return;
-  const snap = await get(ref(db,'settings/'+currentUser.uid));
-  const s = snap.exists() ? snap.val() : {};
-  ['Email','Phone','Address'].forEach(k => {
-    const toggle = document.getElementById('toggle-hide-'+k.toLowerCase());
-    if(toggle) toggle.classList.toggle('on', !!s['hide'+k]);
-  });
-}
-
-// THEME
-window.toggleTheme = () => {
-  const html = document.documentElement;
-  const isDark = html.getAttribute('data-theme') === 'dark';
-  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
-  document.getElementById('theme-toggle').classList.toggle('on', !isDark);
-};
-
-// ========================
-// SEARCH
-// ========================
-async function loadAllUsers() {
-  const snap = await get(ref(db,'users'));
-  if(snap.exists()) allUsers = snap.val();
-}
-window.loadAllUsers = loadAllUsers;
-
-window.doSearch = (q) => {
-  q = q.toLowerCase().trim();
-  const results = document.getElementById('search-results');
-  if(!q) { results.innerHTML=''; return; }
-  const matches = Object.values(allUsers).filter(u => u.name?.toLowerCase().includes(q) || u.username?.toLowerCase().includes(q)).slice(0,8);
-  results.innerHTML = matches.map(u => `
-    <a class="search-result-item" onclick="viewProfile('${u.uid}');closeSearch()">
-      <img src="${u.photoURL||'https://via.placeholder.com/42'}" alt="">
-      <div><div class="name">${u.name}</div><div class="username">@${u.username||''}</div></div>
-    </a>`).join('') || '<p style="color:var(--text-secondary);font-size:13px;padding:12px 16px">No users found.</p>';
-};
-
-window.fullSearch = (q) => {
-  q = q.toLowerCase().trim();
-  const results = document.getElementById('full-search-results');
-  if(!q) { results.innerHTML=''; return; }
-  const matches = Object.values(allUsers).filter(u => u.name?.toLowerCase().includes(q) || u.username?.toLowerCase().includes(q));
-  results.innerHTML = matches.map(u => `
-    <div class="follower-item" onclick="viewProfile('${u.uid}')" style="margin-bottom:8px">
-      <img src="${u.photoURL||'https://via.placeholder.com/44'}" alt="">
-      <div><div class="name">${u.name||''}</div><div class="uname">@${u.username||''}</div></div>
-    </div>`).join('') || '<p style="color:var(--text-secondary);font-size:13px;margin-top:12px">No results found.</p>';
-};
-
-// ========================
-// SHARE
-// ========================
-window.openShareModal = () => {
-  const uid = viewingUID || currentUser?.uid;
-  if(!uid) return;
-  const username = allUsers[uid]?.username || uid;
-  const url = window.location.origin + '/' + username;
+// ─── SHARE ────────────────────────────────────────────────
+window.openShare = () => {
+  const url = window.location.origin + '/' + (viewingData?.username || '');
   document.getElementById('share-url-text').textContent = url;
-  if(window.QRCode) {
-    const canvas = document.getElementById('qr-canvas');
-    QRCode.toCanvas(canvas, url, {width:200, color:{dark:'#f6b544',light:'#222222'}}, ()=>{});
+  if (qrInstance) { qrInstance.clear(); qrInstance.makeCode(url); }
+  else {
+    document.getElementById('qr-canvas').innerHTML = '';
+    qrInstance = new QRCode(document.getElementById('qr-canvas'), { text: url, width: 160, height: 160, colorDark: '#f6b544', colorLight: '#222', correctLevel: QRCode.CorrectLevel.M });
   }
-  document.getElementById('share-modal').classList.add('open');
+  openModal('modal-share');
 };
 
-window.copyProfileURL = () => {
+window.copyProfileUrl = () => {
   const url = document.getElementById('share-url-text').textContent;
   navigator.clipboard.writeText(url).then(() => showToast('URL copied!', 'success'));
 };
 
 window.downloadQR = () => {
-  const canvas = document.getElementById('qr-canvas');
-  const a = document.createElement('a');
-  a.download = 'smartcard-qr.png';
-  a.href = canvas.toDataURL();
-  a.click();
+  const canvas = document.querySelector('#qr-canvas canvas') || document.getElementById('qr-canvas');
+  const a = document.createElement('a'); a.download = 'cardforge-qr.png'; a.href = canvas.toDataURL(); a.click();
 };
 
-window.shareToFacebook = () => { const url = document.getElementById('share-url-text').textContent; window.open('https://www.facebook.com/sharer/sharer.php?u='+encodeURIComponent(url),'_blank'); };
-window.shareToWhatsapp = () => { const url = document.getElementById('share-url-text').textContent; window.open('https://wa.me/?text='+encodeURIComponent(url),'_blank'); };
-window.shareToTelegram = () => { const url = document.getElementById('share-url-text').textContent; window.open('https://t.me/share/url?url='+encodeURIComponent(url),'_blank'); };
-window.nativeShare = () => {
-  const url = document.getElementById('share-url-text').textContent;
-  if(navigator.share) navigator.share({title:'My Smart Card', url});
-  else copyProfileURL();
+window.shareTo = platform => {
+  const url = encodeURIComponent(document.getElementById('share-url-text').textContent);
+  const urls = {
+    facebook: `https://www.facebook.com/sharer/sharer.php?u=${url}`,
+    messenger: `https://www.facebook.com/dialog/send?link=${url}`,
+    whatsapp: `https://wa.me/?text=${url}`,
+    telegram: `https://t.me/share/url?url=${url}`
+  };
+  window.open(urls[platform], '_blank');
 };
 
-// ========================
-// ADMIN PANEL
-// ========================
-window.adminSearch = (q) => {
-  const list = document.getElementById('admin-users-list');
-  const users = Object.values(allUsers);
-  const filtered = q ? users.filter(u => u.name?.toLowerCase().includes(q.toLowerCase()) || u.email?.includes(q)) : users;
-  renderAdminUsers(filtered);
+// ─── EDIT PROFILE ─────────────────────────────────────────
+window.openEditProfile = async () => {
+  if (!currentUser) return;
+  const snap = await get(ref(db, `users/${currentUser.uid}`));
+  const d = snap.val() || {};
+  document.getElementById('edit-name').value = d.name || '';
+  document.getElementById('edit-title').value = d.title || '';
+  document.getElementById('edit-bio').value = d.bio || '';
+  document.getElementById('edit-email').value = d.email || '';
+  document.getElementById('edit-phone').value = d.phone || '';
+  document.getElementById('edit-address').value = d.address || '';
+  document.getElementById('edit-whatsapp').value = d.whatsapp || '';
+  document.getElementById('edit-telegram').value = d.telegram || '';
+  document.getElementById('edit-website').value = d.website || '';
+  // Education
+  const eduSnap = await get(ref(db, `education/${currentUser.uid}`));
+  const eduData = eduSnap.val() || {};
+  document.getElementById('edu-fields').innerHTML = '';
+  Object.entries(eduData).forEach(([k,v]) => addEduField(k, v));
+  // Work
+  const workSnap = await get(ref(db, `work/${currentUser.uid}`));
+  const workData = workSnap.val() || {};
+  document.getElementById('work-fields').innerHTML = '';
+  Object.entries(workData).forEach(([k,v]) => addWorkField(k, v));
+  // Hobbies
+  const hobSnap = await get(ref(db, `hobbies/${currentUser.uid}`));
+  const hobData = hobSnap.val() || [];
+  document.getElementById('edit-hobbies').value = (Array.isArray(hobData)?hobData:Object.values(hobData)).join(', ');
+  // Social
+  const socSnap = await get(ref(db, `socialLinks/${currentUser.uid}`));
+  const socData = socSnap.val() || {};
+  const socEl = document.getElementById('social-fields');
+  socEl.innerHTML = SOCIAL_DEFS.map(s => `
+    <div class="form-group" style="margin-bottom:.6rem">
+      <label class="form-label"><i class="${s.icon}" style="color:${s.color}"></i> ${s.label}</label>
+      <input class="form-control" id="social-${s.key}" value="${socData[s.key]||''}" placeholder="${s.key} username or handle">
+    </div>`).join('');
+  openModal('modal-edit-profile');
 };
+
+let eduKeys = {};
+let workKeys = {};
+
+window.addEduField = (key='', val={}) => {
+  const id = key || 'edu_' + Date.now();
+  const el = document.createElement('div');
+  el.style.cssText = 'margin-bottom:.75rem;padding:.75rem;background:var(--bg3);border:1px solid var(--border);border-radius:10px;position:relative';
+  el.dataset.eduId = id;
+  el.innerHTML = `
+    <button type="button" onclick="this.parentElement.remove()" style="position:absolute;top:8px;right:8px;background:none;border:none;color:var(--text3);cursor:pointer;font-size:.8rem"><i class="fa fa-times"></i></button>
+    <div class="form-row" style="margin-bottom:.5rem">
+      <input class="form-control" placeholder="Institution" style="margin-bottom:0" value="${val.institution||''}" data-edu-inst>
+      <input class="form-control" placeholder="Degree" style="margin-bottom:0" value="${val.degree||''}" data-edu-deg>
+    </div>
+    <input class="form-control" placeholder="Year (e.g. 2020–2024)" style="margin-bottom:0" value="${val.year||''}" data-edu-year>`;
+  document.getElementById('edu-fields').appendChild(el);
+};
+
+window.addWorkField = (key='', val={}) => {
+  const el = document.createElement('div');
+  el.style.cssText = 'margin-bottom:.75rem;padding:.75rem;background:var(--bg3);border:1px solid var(--border);border-radius:10px;position:relative';
+  el.innerHTML = `
+    <button type="button" onclick="this.parentElement.remove()" style="position:absolute;top:8px;right:8px;background:none;border:none;color:var(--text3);cursor:pointer;font-size:.8rem"><i class="fa fa-times"></i></button>
+    <div class="form-row" style="margin-bottom:.5rem">
+      <input class="form-control" placeholder="Company" style="margin-bottom:0" value="${val.company||''}" data-work-co>
+      <input class="form-control" placeholder="Position" style="margin-bottom:0" value="${val.position||''}" data-work-pos>
+    </div>
+    <input class="form-control" placeholder="Year (e.g. 2022–Present)" style="margin-bottom:0" value="${val.year||''}" data-work-year>`;
+  document.getElementById('work-fields').appendChild(el);
+};
+
+window.saveProfile = async () => {
+  if (!currentUser) return;
+  const uid = currentUser.uid;
+  await update(ref(db, `users/${uid}`), {
+    name: document.getElementById('edit-name').value.trim(),
+    title: document.getElementById('edit-title').value.trim(),
+    bio: document.getElementById('edit-bio').value.trim(),
+    email: document.getElementById('edit-email').value.trim(),
+    phone: document.getElementById('edit-phone').value.trim(),
+    address: document.getElementById('edit-address').value.trim(),
+    whatsapp: document.getElementById('edit-whatsapp').value.trim(),
+    telegram: document.getElementById('edit-telegram').value.trim(),
+    website: document.getElementById('edit-website').value.trim(),
+  });
+  // Education
+  await remove(ref(db, `education/${uid}`));
+  document.querySelectorAll('#edu-fields > div').forEach(async el => {
+    const inst = el.querySelector('[data-edu-inst]').value.trim();
+    const deg = el.querySelector('[data-edu-deg]').value.trim();
+    const yr = el.querySelector('[data-edu-year]').value.trim();
+    if (inst) await push(ref(db, `education/${uid}`), { institution: inst, degree: deg, year: yr });
+  });
+  // Work
+  await remove(ref(db, `work/${uid}`));
+  document.querySelectorAll('#work-fields > div').forEach(async el => {
+    const co = el.querySelector('[data-work-co]').value.trim();
+    const pos = el.querySelector('[data-work-pos]').value.trim();
+    const yr = el.querySelector('[data-work-year]').value.trim();
+    if (co) await push(ref(db, `work/${uid}`), { company: co, position: pos, year: yr });
+  });
+  // Hobbies
+  const hobRaw = document.getElementById('edit-hobbies').value;
+  const hobbies = hobRaw.split(',').map(h=>h.trim()).filter(Boolean);
+  await set(ref(db, `hobbies/${uid}`), hobbies);
+  // Social
+  const social = {};
+  SOCIAL_DEFS.forEach(s => { const v = document.getElementById('social-'+s.key)?.value.trim(); if(v) social[s.key]=v; });
+  await set(ref(db, `socialLinks/${uid}`), social);
+  // Contacts (mirror from profile)
+  await set(ref(db, `contacts/${uid}`), {
+    email: document.getElementById('edit-email').value.trim(),
+    phone: document.getElementById('edit-phone').value.trim(),
+    whatsapp: document.getElementById('edit-whatsapp').value.trim(),
+    telegram: document.getElementById('edit-telegram').value.trim(),
+    website: document.getElementById('edit-website').value.trim(),
+  });
+  closeModal('modal-edit-profile');
+  showToast('Profile saved!', 'success');
+};
+
+// ─── AVATAR / COVER UPLOAD ────────────────────────────────
+window.openEditAvatar = () => openModal('modal-avatar');
+window.openEditCover = () => openModal('modal-cover');
+
+window.uploadAvatar = async () => {
+  const file = document.getElementById('avatar-file-input').files[0];
+  if (!file) { showToast('Please select an image', 'error'); return; }
+  showToast('Uploading…');
+  const storageRef = sRef(storage, `avatars/${currentUser.uid}`);
+  await uploadBytes(storageRef, file);
+  const url = await getDownloadURL(storageRef);
+  await update(ref(db, `users/${currentUser.uid}`), { photoURL: url });
+  document.getElementById('profile-avatar').src = url;
+  closeModal('modal-avatar');
+  showToast('Profile picture updated!', 'success');
+};
+
+window.uploadCover = async () => {
+  const file = document.getElementById('cover-file-input').files[0];
+  if (!file) { showToast('Please select an image', 'error'); return; }
+  showToast('Uploading…');
+  const storageRef = sRef(storage, `covers/${currentUser.uid}`);
+  await uploadBytes(storageRef, file);
+  const url = await getDownloadURL(storageRef);
+  await update(ref(db, `users/${currentUser.uid}`), { coverURL: url });
+  document.getElementById('cover-img').src = url;
+  document.getElementById('cover-img').classList.remove('hidden');
+  document.getElementById('cover-placeholder').style.display = 'none';
+  closeModal('modal-cover');
+  showToast('Cover photo updated!', 'success');
+};
+
+// ─── USERNAME CHANGE ──────────────────────────────────────
+let usernameAvail = false;
+window.openChangeUsername = () => {
+  document.getElementById('new-username-input').value = '';
+  document.getElementById('username-avail-msg').textContent = '';
+  openModal('modal-username');
+};
+
+window.checkUsername = async () => {
+  const val = document.getElementById('new-username-input').value.trim();
+  const msg = document.getElementById('username-avail-msg');
+  usernameAvail = false;
+  if (!val) { msg.textContent=''; return; }
+  if (!/^[a-z0-9_]+$/.test(val)) { msg.textContent = '❌ Only a-z, 0-9, _ allowed'; msg.className='avail-msg avail-err'; return; }
+  const snap = await get(query(ref(db,'users'), orderByChild('username'), equalTo(val)));
+  if (snap.exists()) { msg.textContent='❌ Username taken'; msg.className='avail-msg avail-err'; }
+  else { msg.textContent='✓ Available'; msg.className='avail-msg avail-ok'; usernameAvail=true; }
+};
+
+window.changeUsername = async () => {
+  if (!usernameAvail) { showToast('Choose a valid, available username', 'error'); return; }
+  const val = document.getElementById('new-username-input').value.trim();
+  await update(ref(db, `users/${currentUser.uid}`), { username: val });
+  document.getElementById('settings-username-display').textContent = '@' + val;
+  closeModal('modal-username');
+  showToast('Username updated!', 'success');
+};
+
+// ─── PRIVACY ──────────────────────────────────────────────
+async function loadPrivacy() {
+  const snap = await get(ref(db, `settings/${currentUser.uid}/privacy`));
+  privacySettings = snap.val() || {};
+  document.getElementById('privacy-email').checked = !!privacySettings.hideEmail;
+  document.getElementById('privacy-phone').checked = !!privacySettings.hidePhone;
+  document.getElementById('privacy-address').checked = !!privacySettings.hideAddress;
+}
+
+window.savePrivacy = async (key, val) => {
+  await update(ref(db, `settings/${currentUser.uid}/privacy`), { [key]: val });
+  privacySettings[key] = val;
+};
+
+// ─── THEME ────────────────────────────────────────────────
+function setTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  localStorage.setItem('cf-theme', t);
+}
+window.toggleTheme = () => {
+  const cur = document.documentElement.getAttribute('data-theme');
+  setTheme(cur==='dark' ? 'light' : 'dark');
+};
+
+// ─── SEARCH ───────────────────────────────────────────────
+window.openSearch = () => { document.getElementById('search-overlay').classList.add('open'); document.getElementById('search-input').focus(); };
+window.closeSearch = () => { document.getElementById('search-overlay').classList.remove('open'); };
+
+let searchTimeout;
+async function doSearch() {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(async () => {
+    const q = document.getElementById('search-input').value.trim().toLowerCase();
+    const el = document.getElementById('search-results');
+    if (!q) { el.classList.add('hidden'); return; }
+    el.classList.remove('hidden'); el.innerHTML = '<div style="padding:1rem;color:var(--text3);font-size:.85rem">Searching…</div>';
+    const snap = await get(ref(db, 'users'));
+    if (!snap.exists()) { el.innerHTML = '<div style="padding:1rem;color:var(--text3);font-size:.85rem">No results</div>'; return; }
+    const results = Object.values(snap.val()).filter(u => (u.name||'').toLowerCase().includes(q) || (u.username||'').toLowerCase().includes(q));
+    if (!results.length) { el.innerHTML = '<div style="padding:1rem;color:var(--text3);font-size:.85rem">No results found</div>'; return; }
+    el.innerHTML = results.slice(0,8).map(u => `
+      <div class="search-result-item" onclick="window.location.href='/${u.username}'">
+        <img class="search-result-avatar" src="${u.photoURL||''}" alt="">
+        <div><div class="search-result-name">${u.name||''}</div><div class="search-result-username">@${u.username||''}</div></div>
+      </div>`).join('');
+  }, 300);
+}
+
+// ─── ADMIN ────────────────────────────────────────────────
+let allUsersCache = [];
+
+async function loadAdminPanel() {
+  const snap = await get(ref(db, 'users'));
+  if (!snap.exists()) return;
+  allUsersCache = Object.values(snap.val());
+  document.getElementById('admin-total-users').textContent = allUsersCache.length;
+  let totalViews = 0;
+  for (const u of allUsersCache) {
+    const vs = await get(ref(db, `views/${u.uid}`));
+    if (vs.exists()) totalViews += Object.keys(vs.val()).length;
+  }
+  document.getElementById('admin-total-views').textContent = totalViews;
+  renderAdminUsers(allUsersCache);
+}
 
 function renderAdminUsers(users) {
-  const list = document.getElementById('admin-users-list');
-  document.getElementById('admin-total-users').textContent = Object.keys(allUsers).length;
-  const totalViews = Object.values(allUsers).reduce((s,u) => s + (u.views||0), 0);
-  document.getElementById('admin-total-views').textContent = totalViews;
-  list.innerHTML = users.map(u => `
-    <div class="admin-user-row">
-      <img src="${u.photoURL||'https://via.placeholder.com/40'}" alt="">
-      <div class="info">
-        <div class="name">${u.name||''} ${u.verified?'<span class="verified-badge"><i class="fa-solid fa-circle-check"></i></span>':''} ${u.banned?'<span class="banned-badge">BANNED</span>':''}</div>
-        <div class="email">${u.email||''}</div>
-      </div>
-      <div class="actions">
-        <button class="admin-action-btn" onclick="adminVerify('${u.uid}','${u.verified}')">${u.verified?'Unverify':'Verify'}</button>
-        <button class="admin-action-btn ${u.banned?'':'danger'}" onclick="adminBan('${u.uid}','${u.banned}')">${u.banned?'Unban':'Ban'}</button>
-        <button class="admin-action-btn danger" onclick="adminDelete('${u.uid}')">Del</button>
+  const el = document.getElementById('admin-users-list');
+  el.innerHTML = users.map(u => `
+    <div class="admin-table-row">
+      <div style="font-size:.88rem;font-weight:600">${u.name||''}</div>
+      <div style="font-size:.78rem;color:var(--text3);font-family:'Space Mono',monospace">@${u.username||''}</div>
+      <div class="admin-actions">
+        <button class="admin-btn admin-btn-verify" onclick="adminVerify('${u.uid}',${!u.verified})">${u.verified?'Unverify':'Verify'}</button>
+        <button class="admin-btn admin-btn-ban" onclick="adminBan('${u.uid}',${!u.banned})">${u.banned?'Unban':'Ban'}</button>
+        <button class="admin-btn admin-btn-del" onclick="adminDel('${u.uid}')"><i class="fa fa-trash"></i></button>
       </div>
     </div>`).join('');
 }
 
-window.adminVerify = async (uid, isVerified) => {
-  await update(ref(db,'users/'+uid), {verified: isVerified==='true'?false:true});
-  await loadAllUsers();
-  renderAdminUsers(Object.values(allUsers));
-};
-window.adminBan = async (uid, isBanned) => {
-  await update(ref(db,'users/'+uid), {banned: isBanned==='true'?false:true});
-  await loadAllUsers();
-  renderAdminUsers(Object.values(allUsers));
-};
-window.adminDelete = async (uid) => {
-  if(!confirm('Delete this user?')) return;
-  await remove(ref(db,'users/'+uid));
-  await loadAllUsers();
-  renderAdminUsers(Object.values(allUsers));
+window.adminSearch = () => {
+  const q = document.getElementById('admin-search').value.toLowerCase();
+  renderAdminUsers(allUsersCache.filter(u => (u.name||'').toLowerCase().includes(q) || (u.username||'').toLowerCase().includes(q)));
 };
 
-// When admin page shown
-const origNav = window.navigateTo;
-window._navigateTo = window.navigateTo;
+window.adminVerify = async (uid, val) => {
+  await update(ref(db, `users/${uid}`), { verified: val });
+  allUsersCache = allUsersCache.map(u => u.uid===uid?{...u,verified:val}:u);
+  renderAdminUsers(allUsersCache);
+};
+window.adminBan = async (uid, val) => {
+  await update(ref(db, `users/${uid}`), { banned: val });
+  allUsersCache = allUsersCache.map(u => u.uid===uid?{...u,banned:val}:u);
+  renderAdminUsers(allUsersCache);
+};
+window.adminDel = async uid => {
+  if (!confirm('Delete this user?')) return;
+  await remove(ref(db, `users/${uid}`));
+  allUsersCache = allUsersCache.filter(u => u.uid!==uid);
+  renderAdminUsers(allUsersCache);
+};
 
-// ========================
-// INIT LOAD
-// ========================
-setTimeout(hideLoading, 3000);
+// ─── PAGES ────────────────────────────────────────────────
+window.showPage = page => {
+  ['profile','settings','admin','404'].forEach(p => {
+    const el = document.getElementById('page-'+p);
+    el.classList.toggle('active', p===page);
+  });
+  if (page==='admin') loadAdminPanel();
+};
 
-function hideLoading() {
-  const ls = document.getElementById('loading-screen');
-  if(ls) { ls.style.opacity='0'; ls.style.transition='opacity .4s'; setTimeout(()=>ls.remove(),400); }
-}
-window.hideLoading = hideLoading;
+window.goHome = () => { window.location.href = '/'; };
 
-// Load privacy settings when settings page shown
-document.getElementById('sb-settings')?.addEventListener('click', loadPrivacySettings);
+// ─── SIDEBAR ──────────────────────────────────────────────
+window.openSidebar = () => { document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-overlay').classList.add('open'); };
+window.closeSidebar = () => { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('open'); };
 
-// Admin page load
-window.addEventListener('navigated', (e) => {
-  if(e.detail === 'admin') renderAdminUsers(Object.values(allUsers));
-});
+// ─── MODALS ───────────────────────────────────────────────
+window.openModal = id => document.getElementById(id).classList.add('open');
+window.closeModal = id => document.getElementById(id).classList.remove('open');
+document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', e => { if(e.target===m) m.classList.remove('open'); }));
 
+// ─── TOAST ────────────────────────────────────────────────
+window.showToast = (msg, type='') => {
+  const t = document.createElement('div');
+  t.className = 'toast' + (type?' '+type:'');
+  t.textContent = msg;
+  document.getElementById('toast-container').appendChild(t);
+  setTimeout(() => t.remove(), 2800);
+};
 </script>
-
-<script>
-// ========================
-// NAVIGATION (non-module)
-// ========================
-function navigateTo(page) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  const target = document.getElementById('page-' + page);
-  if(target) target.classList.add('active');
-
-  document.querySelectorAll('.sidebar-item').forEach(b => b.classList.remove('active'));
-  const sb = document.getElementById('sb-' + page);
-  if(sb) sb.classList.add('active');
-
-  closeSidebar();
-  window.dispatchEvent(new CustomEvent('navigated', {detail: page}));
-}
-window.navigateTo = navigateTo;
-
-function toggleSidebar() {
-  document.getElementById('sidebar').classList.toggle('open');
-  document.getElementById('sidebar-overlay').classList.toggle('open');
-}
-function closeSidebar() {
-  document.getElementById('sidebar').classList.remove('open');
-  document.getElementById('sidebar-overlay').classList.remove('open');
-}
-window.toggleSidebar = toggleSidebar;
-window.closeSidebar = closeSidebar;
-
-function openSearch() {
-  document.getElementById('search-modal').classList.add('open');
-  setTimeout(() => document.getElementById('search-input').focus(), 100);
-}
-function closeSearch() {
-  document.getElementById('search-modal').classList.remove('open');
-  document.getElementById('search-input').value = '';
-  document.getElementById('search-results').innerHTML = '';
-}
-window.openSearch = openSearch;
-window.closeSearch = closeSearch;
-
-function switchTab(name) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-  event.target.classList.add('active');
-  document.getElementById('tab-' + name).classList.add('active');
-}
-window.switchTab = switchTab;
-
-function showToast(msg, type = '') {
-  const container = document.getElementById('toast-container');
-  const toast = document.createElement('div');
-  toast.className = 'toast ' + type;
-  toast.textContent = msg;
-  container.appendChild(toast);
-  setTimeout(() => { toast.style.opacity='0'; toast.style.transition='opacity .3s'; setTimeout(()=>toast.remove(),300); }, 3000);
-}
-window.showToast = showToast;
-</script>
-
 </body>
 </html>
