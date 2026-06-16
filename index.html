@@ -36,10 +36,6 @@ header{display:flex;align-items:center;justify-content:space-between;padding:.8r
 .icon-btn:hover{border-color:var(--accent);color:var(--accent);}
 .icon-btn img{width:26px;height:26px;border-radius:50%;object-fit:cover;}
 
-/* USERNAME BADGE in header */
-.username-tag{font-family:'Space Mono',monospace;font-size:.6rem;color:var(--text2);background:var(--panel2);border:1px solid var(--border2);border-radius:100px;padding:4px 10px;display:none;}
-.username-tag.show{display:block;}
-
 /* ═══ PROFILE CARD ═══ */
 .profile-card{background:var(--panel);margin-bottom:10px;box-shadow:0 2px 12px var(--shadow);}
 
@@ -95,7 +91,6 @@ header{display:flex;align-items:center;justify-content:space-between;padding:.8r
 .fb-btn.ghost{background:var(--panel2);color:var(--text);border:1px solid var(--border2);}
 .fb-btn.share-btn{background:var(--panel2);color:var(--text);border:1px solid var(--border2);}
 .fb-btn:hover{filter:brightness(1.08);transform:translateY(-1px);}
-.fb-btn.settings-btn{background:var(--panel2);color:var(--text2);border:1px solid var(--border2);}
 
 /* ── Profile Info ── */
 .pf-info{padding:.2rem 1rem 1rem;}
@@ -114,17 +109,23 @@ header{display:flex;align-items:center;justify-content:space-between;padding:.8r
 .pf-type-tag{display:inline-flex;align-items:center;gap:5px;font-size:.75rem;color:var(--text2);margin-bottom:.5rem;}
 .pf-type-tag span{background:var(--panel2);border-radius:4px;padding:2px 8px;font-size:.73rem;}
 
-/* Stats */
+/* Stats / Reactions */
 .pf-stats{display:flex;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:.85rem;}
-.pf-stat{flex:1;text-align:center;padding:.7rem .5rem;cursor:pointer;transition:background .2s;border-right:1px solid var(--border);}
+.pf-stat{flex:1;text-align:center;padding:.7rem .5rem;cursor:pointer;transition:background .2s,transform .15s;border-right:1px solid var(--border);font-family:inherit;color:inherit;background:none;border-top:none;border-left:none;border-bottom:none;outline:none;-webkit-appearance:none;appearance:none;}
 .pf-stat:last-child{border-right:none;}
 .pf-stat:hover{background:var(--accent-dim);}
-.pf-stat-n{font-family:'Syne',sans-serif;font-size:1.18rem;font-weight:800;color:var(--text);}
+.pf-stat:active{transform:scale(.93);}
+.pf-stat-n{font-family:'Syne',sans-serif;font-size:1.18rem;font-weight:800;color:var(--text);display:inline-block;}
+.pf-stat-n.pop{animation:statPop .35s ease;}
+@keyframes statPop{0%{transform:scale(1);}45%{transform:scale(1.28);}100%{transform:scale(1);}}
 .pf-stat-l{font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);margin-top:2px;}
-
-/* Profile Views stat row */
-.pf-views-row{display:flex;align-items:center;gap:6px;font-size:.75rem;color:var(--text2);margin-bottom:.6rem;padding:6px 10px;background:var(--panel2);border-radius:100px;width:fit-content;}
-.pf-views-row i{color:var(--accent);}
+.pf-stat-l i{margin-right:3px;}
+#like-btn.is-active .pf-stat-n,#like-btn.is-active .pf-stat-l,#like-btn.is-active .pf-stat-l i{color:var(--accent);}
+#like-btn.is-active{background:var(--accent-dim);}
+#dislike-btn.is-active .pf-stat-n,#dislike-btn.is-active .pf-stat-l,#dislike-btn.is-active .pf-stat-l i{color:var(--danger);}
+#dislike-btn.is-active{background:rgba(229,57,53,0.08);}
+.pf-views-stat{cursor:default;}
+.pf-views-stat:hover{background:none;}
 
 /* Socials */
 .pf-socials{display:flex;gap:7px;flex-wrap:wrap;}
@@ -313,10 +314,10 @@ section{margin-bottom:10px;background:var(--panel);padding:1.1rem 1rem;box-shado
 .fg-input{width:100%;background:var(--panel2);border:1.5px solid var(--border2);border-radius:10px;padding:.65rem .9rem;font-family:'DM Sans',sans-serif;font-size:.85rem;color:var(--text);outline:none;transition:border-color .2s;resize:vertical;}
 .fg-input:focus{border-color:var(--accent);}
 
-/* Dropdown button with notification dot */
-.pf-dropdown-btn{position:relative;display:flex;align-items:center;justify-content:center;width:36px;height:36px;background:var(--panel3);border-radius:50%;border:1px solid var(--border2);cursor:pointer;color:var(--text2);transition:all .2s;}
-.pf-dropdown-btn:hover{border-color:var(--accent);color:var(--accent);}
-.pf-notif-dot{width:10px;height:10px;background:var(--danger);border-radius:50%;border:2px solid var(--panel);position:absolute;top:0;right:0;}
+/* Dropdown button (settings entry point, lives inside the profile card) */
+.pf-dropdown-btn{position:relative;display:flex;align-items:center;justify-content:center;width:36px;height:36px;background:var(--panel3);border-radius:50%;border:1px solid var(--border2);cursor:pointer;color:var(--text2);transition:all .2s;font-family:inherit;font-size:.85rem;}
+.pf-dropdown-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-dim);}
+.pf-dropdown-btn:active{transform:scale(.92);}
 
 /* Username setup prompt */
 .username-prompt{background:linear-gradient(135deg,var(--accent-dim),var(--panel2));border:1.5px solid var(--accent);border-radius:12px;padding:.9rem 1rem;margin-bottom:.7rem;display:flex;align-items:center;gap:10px;cursor:pointer;transition:all .2s;}
@@ -333,7 +334,6 @@ section{margin-bottom:10px;background:var(--panel);padding:1.1rem 1rem;box-shado
 <header>
   <div class="logo"><div class="logo-dot"></div>Dev<span>Card</span></div>
   <div class="hd-right">
-    <span class="username-tag" id="header-username"></span>
     <button class="icon-btn" id="login-btn" onclick="openLoginModal()" title="লগইন"><i class="fa-solid fa-user"></i></button>
   </div>
 </header>
@@ -390,20 +390,15 @@ section{margin-bottom:10px;background:var(--panel);padding:1.1rem 1rem;box-shado
       <button class="fb-btn primary" id="edit-pf-btn" onclick="openProfileModal()" style="display:none">
         <i class="fa-solid fa-pen-to-square"></i> এডিট
       </button>
-      <!-- Settings button (admin only) -->
-      <button class="fb-btn settings-btn" id="settings-btn" onclick="openModal('settings-modal')" style="display:none">
-        <i class="fa-solid fa-gear"></i>
-      </button>
       <!-- Login button (visitors) -->
       <button class="fb-btn ghost" id="login-action-btn" onclick="openLoginModal()">
         <svg width="15" height="15" viewBox="0 0 24 24" style="flex-shrink:0"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66 2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
         Login
       </button>
-      <!-- Dropdown with notification (admin) -->
-      <div class="pf-dropdown-btn" id="pf-dropdown-btn" onclick="openModal('settings-modal')" style="display:none" title="আরো অপশন">
+      <!-- Settings (admin only) — lives inside the profile card itself -->
+      <button class="pf-dropdown-btn" id="pf-dropdown-btn" onclick="openModal('settings-modal')" style="display:none" title="সেটিংস ও আরো অপশন">
         <i class="fa-solid fa-chevron-down"></i>
-        <div class="pf-notif-dot"></div>
-      </div>
+      </button>
     </div>
   </div>
 
@@ -435,17 +430,20 @@ section{margin-bottom:10px;background:var(--panel);padding:1.1rem 1rem;box-shado
       <span id="pf-ig-text"></span>
     </div>
 
-    <!-- Profile views -->
-    <div class="pf-views-row">
-      <i class="fa-solid fa-eye"></i>
-      <span id="pf-views-el">0</span> জন প্রোফাইল দেখেছেন
-    </div>
-
-    <!-- Stats -->
+    <!-- Engagement: Like / Dislike / Views (live, real-time) -->
     <div class="pf-stats">
-      <div class="pf-stat"><div class="pf-stat-n" id="st-followers">951</div><div class="pf-stat-l">Followers</div></div>
-      <div class="pf-stat"><div class="pf-stat-n" id="st-following">6</div><div class="pf-stat-l">Following</div></div>
-      <div class="pf-stat"><div class="pf-stat-n" id="st-posts">107</div><div class="pf-stat-l">Posts</div></div>
+      <button class="pf-stat pf-react" id="like-btn" onclick="reactTo('like')" title="লাইক করুন">
+        <div class="pf-stat-n" id="st-likes">0</div>
+        <div class="pf-stat-l"><i class="fa-solid fa-thumbs-up"></i> Like</div>
+      </button>
+      <button class="pf-stat pf-react" id="dislike-btn" onclick="reactTo('dislike')" title="ডিসলাইক করুন">
+        <div class="pf-stat-n" id="st-dislikes">0</div>
+        <div class="pf-stat-l"><i class="fa-solid fa-thumbs-down"></i> Dislike</div>
+      </button>
+      <div class="pf-stat pf-views-stat" title="প্রোফাইল ভিউ">
+        <div class="pf-stat-n" id="st-views">0</div>
+        <div class="pf-stat-l"><i class="fa-solid fa-eye"></i> Views</div>
+      </div>
     </div>
 
     <!-- Social links -->
@@ -618,7 +616,6 @@ section{margin-bottom:10px;background:var(--panel);padding:1.1rem 1rem;box-shado
       <button class="tab-btn active" onclick="switchTab('tab-photos')"><i class="fa-solid fa-image"></i> ছবি</button>
       <button class="tab-btn" onclick="switchTab('tab-basic')"><i class="fa-solid fa-user"></i> তথ্য</button>
       <button class="tab-btn" onclick="switchTab('tab-social')"><i class="fa-solid fa-link"></i> সোশ্যাল</button>
-      <button class="tab-btn" onclick="switchTab('tab-stats')"><i class="fa-solid fa-chart-bar"></i> স্ট্যাটস</button>
     </div>
 
     <!-- TAB: Photos -->
@@ -628,7 +625,7 @@ section{margin-bottom:10px;background:var(--panel);padding:1.1rem 1rem;box-shado
         <div class="av-preview-circle" id="av-preview-circle"><i class="fa-solid fa-user"></i></div>
         <div class="av-upload-info">
           <h4>প্রোফাইল ফটো</h4>
-          <p>JPG, PNG বা WEBP • সর্বোচ্চ ৫ MB<br>Firebase Storage-এ আপলোড হবে</p>
+          <p>JPG, PNG বা WEBP • সর্বোচ্চ ৮ MB<br>আপলোডের আগে অটোমেটিক অপটিমাইজ হবে</p>
         </div>
       </div>
       <div class="upload-zone" id="av-upload-zone">
@@ -647,7 +644,7 @@ section{margin-bottom:10px;background:var(--panel);padding:1.1rem 1rem;box-shado
       <div class="sec-div"></div>
 
       <h4 style="font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;margin-bottom:.8rem;color:var(--text2);">কভার ফটো</h4>
-      <p style="font-size:.75rem;color:var(--text2);margin-bottom:.6rem;">১৬:৯ অনুপাতের ছবি সবচেয়ে ভালো। Firebase Storage-এ সংরক্ষিত হবে।</p>
+      <p style="font-size:.75rem;color:var(--text2);margin-bottom:.6rem;">১৬:৯ অনুপাতের ছবি সবচেয়ে ভালো (সর্বোচ্চ ১২ MB, অটো-অপটিমাইজ হবে)।</p>
       <div class="upload-zone" id="cover-upload-zone" style="height:auto">
         <input type="file" accept="image/*" onchange="previewAndUploadCover(this)">
         <img class="uz-cover-preview" id="cover-modal-preview">
@@ -704,17 +701,6 @@ section{margin-bottom:10px;background:var(--panel);padding:1.1rem 1rem;box-shado
       <button class="btn" onclick="saveProfile()"><i class="fa-solid fa-floppy-disk"></i> সেভ করুন</button>
     </div>
 
-    <!-- TAB: Stats -->
-    <div class="tab-pane" id="tab-stats">
-      <p style="font-size:.8rem;color:var(--text2);margin-bottom:1rem;">প্রোফাইলে দেখানো সংখ্যাগুলো আপডেট করুন।</p>
-      <div class="form-group"><label><i class="fa-solid fa-users" style="color:var(--accent);margin-right:6px;"></i>Followers</label>
-        <input class="fg-input" type="number" id="pf-followers" placeholder="951"></div>
-      <div class="form-group"><label><i class="fa-solid fa-user-plus" style="color:var(--accent2);margin-right:6px;"></i>Following</label>
-        <input class="fg-input" type="number" id="pf-following" placeholder="6"></div>
-      <div class="form-group"><label><i class="fa-solid fa-image" style="color:var(--text2);margin-right:6px;"></i>Posts</label>
-        <input class="fg-input" type="number" id="pf-posts" placeholder="107"></div>
-      <button class="btn" onclick="saveProfile()"><i class="fa-solid fa-floppy-disk"></i> সেভ করুন</button>
-    </div>
   </div>
 </div>
 
@@ -800,7 +786,7 @@ function switchTab(id){
   document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  const idx=['tab-photos','tab-basic','tab-social','tab-stats'].indexOf(id);
+  const idx=['tab-photos','tab-basic','tab-social'].indexOf(id);
   if(idx>=0)document.querySelectorAll('.tab-btn')[idx].classList.add('active');
 }
 
@@ -867,22 +853,123 @@ auth.onAuthStateChanged(u=>{
 function avUrl(n){return'https://ui-avatars.com/api/?name='+encodeURIComponent(n)+'&background=1877f2&color=fff&bold=true';}
 
 /* ══════════════ PROFILE VIEWS ══════════════ */
+let _viewCounted=false;
 function trackView(){
-  const viewRef=db.ref('profile/views');
-  viewRef.transaction(v=>(v||0)+1);
+  if(_viewCounted)return;
+  try{
+    if(sessionStorage.getItem('dc_viewed')){_viewCounted=true;return;}
+    sessionStorage.setItem('dc_viewed','1');
+  }catch(e){}
+  _viewCounted=true;
+  db.ref('profile/views').transaction(v=>(v||0)+1);
+}
+
+/* ══════════════ LIKE / DISLIKE (real-time, anyone can react) ══════════════ */
+function getVisitorId(){
+  try{
+    let id=localStorage.getItem('dc_vid');
+    if(!id){id='v_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,10);localStorage.setItem('dc_vid',id);}
+    return id;
+  }catch(e){return 'v_'+Date.now().toString(36);}
+}
+const _vid=getVisitorId();
+let _myReaction=null;
+const reactionsRef=db.ref('reactions');
+reactionsRef.on('value',snap=>{
+  const d=snap.val()||{};
+  let likes=0,dislikes=0,mine=null;
+  Object.entries(d).forEach(([k,v])=>{
+    if(v==='like')likes++;
+    else if(v==='dislike')dislikes++;
+    if(k===_vid)mine=v;
+  });
+  _myReaction=mine;
+  bumpNumber('st-likes',likes);
+  bumpNumber('st-dislikes',dislikes);
+  document.getElementById('like-btn').classList.toggle('is-active',mine==='like');
+  document.getElementById('dislike-btn').classList.toggle('is-active',mine==='dislike');
+});
+
+function bumpNumber(id,val){
+  const el=document.getElementById(id);
+  if(!el)return;
+  const newTxt=fmtNum(val);
+  if(el.textContent!==newTxt){
+    el.textContent=newTxt;
+    el.classList.remove('pop');
+    requestAnimationFrame(()=>el.classList.add('pop'));
+  }
+}
+
+function reactTo(type){
+  const myRef=reactionsRef.child(_vid);
+  if(_myReaction===type){
+    myRef.remove().catch(()=>toast('এরর হয়েছে, আবার চেষ্টা করুন','error'));
+  } else {
+    myRef.set(type).catch(()=>toast('এরর হয়েছে, আবার চেষ্টা করুন','error'));
+  }
 }
 
 /* ══════════════ IMAGE UPLOAD (Firebase Storage) ══════════════ */
-function uploadToStorage(file,path,onProgress){
+function uploadToStorage(blob,path,onProgress){
   return new Promise((resolve,reject)=>{
     const ref=storage.ref(path);
-    const task=ref.put(file);
+    const task=ref.put(blob,{contentType:'image/jpeg'});
     task.on('state_changed',
-      snap=>{const pct=Math.round(snap.bytesTransferred/snap.totalBytes*100);if(onProgress)onProgress(pct);},
+      snap=>{const pct=snap.totalBytes?Math.round(snap.bytesTransferred/snap.totalBytes*100):0;if(onProgress)onProgress(pct);},
       err=>reject(err),
-      ()=>task.snapshot.ref.getDownloadURL().then(resolve)
+      ()=>task.snapshot.ref.getDownloadURL().then(resolve).catch(reject)
     );
   });
+}
+
+/* Resize + compress an image client-side before upload. Keeps uploads fast
+   and light on mobile data, and prevents huge raw photos from failing silently. */
+function compressImage(file,maxDim,quality){
+  return new Promise((resolve,reject)=>{
+    if(!file.type||!file.type.startsWith('image/')){reject(new Error('সঠিক ছবি ফাইল নির্বাচন করুন (JPG, PNG, WEBP)'));return;}
+    const reader=new FileReader();
+    reader.onerror=()=>reject(new Error('ফাইল পড়তে সমস্যা হয়েছে'));
+    reader.onload=e=>{
+      const img=new Image();
+      img.onerror=()=>reject(new Error('ছবিটি খোলা যায়নি, অন্য ছবি চেষ্টা করুন'));
+      img.onload=()=>{
+        let{width,height}=img;
+        if(width>maxDim||height>maxDim){
+          if(width>height){height=Math.round(height*maxDim/width);width=maxDim;}
+          else{width=Math.round(width*maxDim/height);height=maxDim;}
+        }
+        const canvas=document.createElement('canvas');
+        canvas.width=width;canvas.height=height;
+        canvas.getContext('2d').drawImage(img,0,0,width,height);
+        canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('ছবি প্রসেস করতে সমস্যা হয়েছে')),'image/jpeg',quality);
+      };
+      img.src=e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function friendlyUploadError(err){
+  const map={
+    'storage/unauthorized':'অনুমতি নেই — Firebase Storage rules চেক করুন',
+    'storage/canceled':'আপলোড বাতিল করা হয়েছে',
+    'storage/quota-exceeded':'স্টোরেজ কোটা শেষ হয়ে গেছে',
+    'storage/retry-limit-exceeded':'নেটওয়ার্ক সমস্যা, আবার চেষ্টা করুন',
+    'storage/unknown':'অজানা এরর, আবার চেষ্টা করুন'
+  };
+  return (err&&map[err.code])||(err&&err.message)||'অজানা এরর';
+}
+
+const IMG_LIMITS={avatar:{raw:8*1024*1024,dim:640,quality:.86},cover:{raw:12*1024*1024,dim:1600,quality:.85}};
+
+async function uploadProfileImage(file,type,onProgress){
+  const lim=IMG_LIMITS[type];
+  if(file.size>lim.raw)throw new Error(`ছবির আকার ${Math.round(lim.raw/1024/1024)} MB-এর বেশি হওয়া যাবে না`);
+  const blob=await compressImage(file,lim.dim,lim.quality);
+  const url=await uploadToStorage(blob,`profile/${type}_${Date.now()}.jpg`,onProgress);
+  await db.ref('profile').update({[type]:url});
+  return url;
 }
 
 /* Avatar: direct click from camera button */
@@ -892,14 +979,12 @@ function openAvatarUpload(){
 }
 async function handleAvatarUpload(input){
   const file=input.files[0]; if(!file)return;
-  if(file.size>5*1024*1024){toast('ছবির আকার ৫ MB-এর বেশি হওয়া যাবে না','error');return;}
   const ring=document.getElementById('av-uploading-ring');
   ring.classList.add('active');
   try{
-    const url=await uploadToStorage(file,'profile/avatar_'+Date.now()+'.'+file.name.split('.').pop(),()=>{});
-    await db.ref('profile').update({avatar:url});
+    await uploadProfileImage(file,'avatar');
     toast('প্রোফাইল ছবি আপলোড সফল ✅','success');
-  }catch(e){toast('আপলোড ব্যর্থ: '+e.message,'error');}
+  }catch(e){toast('আপলোড ব্যর্থ: '+friendlyUploadError(e),'error');}
   finally{ring.classList.remove('active');input.value='';}
 }
 
@@ -910,21 +995,19 @@ function openCoverUpload(){
 }
 async function handleCoverUpload(input){
   const file=input.files[0]; if(!file)return;
-  if(file.size>8*1024*1024){toast('ছবির আকার ৮ MB-এর বেশি হওয়া যাবে না','error');return;}
   const up=document.getElementById('cover-uploading');
   up.classList.add('active');
   try{
-    const url=await uploadToStorage(file,'profile/cover_'+Date.now()+'.'+file.name.split('.').pop(),()=>{});
-    await db.ref('profile').update({cover:url});
+    await uploadProfileImage(file,'cover');
     toast('কভার ফটো আপলোড সফল ✅','success');
-  }catch(e){toast('আপলোড ব্যর্থ: '+e.message,'error');}
+  }catch(e){toast('আপলোড ব্যর্থ: '+friendlyUploadError(e),'error');}
   finally{up.classList.remove('active');input.value='';}
 }
 
 /* Modal photo tab uploaders */
 async function previewAndUploadAvatar(input){
   const file=input.files[0]; if(!file)return;
-  if(file.size>5*1024*1024){toast('ছবির আকার ৫ MB-এর বেশি হওয়া যাবে না','error');return;}
+  if(!file.type||!file.type.startsWith('image/')){toast('সঠিক ছবি ফাইল নির্বাচন করুন','error');input.value='';return;}
   const reader=new FileReader();
   reader.onload=e=>{
     const circle=document.getElementById('av-preview-circle');
@@ -934,20 +1017,19 @@ async function previewAndUploadAvatar(input){
   const prog=document.getElementById('av-upload-progress');
   const fill=document.getElementById('av-up-fill');
   const lbl=document.getElementById('av-up-label');
-  prog.classList.add('active');fill.style.width='0%';lbl.textContent='আপলোড হচ্ছে...';
+  prog.classList.add('active');fill.style.width='0%';lbl.textContent='প্রসেস হচ্ছে...';
   try{
-    const url=await uploadToStorage(file,'profile/avatar_'+Date.now()+'.'+file.name.split('.').pop(),p=>{fill.style.width=p+'%';lbl.textContent=p+'% সম্পন্ন';});
-    await db.ref('profile').update({avatar:url});
+    await uploadProfileImage(file,'avatar',p=>{fill.style.width=p+'%';lbl.textContent=p+'% সম্পন্ন';});
     lbl.textContent='আপলোড সম্পন্ন ✅';
     toast('প্রোফাইল ছবি আপলোড সফল ✅','success');
     setTimeout(()=>{prog.classList.remove('active');fill.style.width='0%';},1500);
-  }catch(e){lbl.textContent='ব্যর্থ হয়েছে ❌';toast('আপলোড ব্যর্থ: '+e.message,'error');setTimeout(()=>prog.classList.remove('active'),1500);}
+  }catch(e){lbl.textContent='ব্যর্থ হয়েছে ❌';toast('আপলোড ব্যর্থ: '+friendlyUploadError(e),'error');setTimeout(()=>prog.classList.remove('active'),1500);}
   input.value='';
 }
 
 async function previewAndUploadCover(input){
   const file=input.files[0]; if(!file)return;
-  if(file.size>8*1024*1024){toast('ছবির আকার ৮ MB-এর বেশি হওয়া যাবে না','error');return;}
+  if(!file.type||!file.type.startsWith('image/')){toast('সঠিক ছবি ফাইল নির্বাচন করুন','error');input.value='';return;}
   const reader=new FileReader();
   reader.onload=e=>{
     const prev=document.getElementById('cover-modal-preview');
@@ -958,14 +1040,13 @@ async function previewAndUploadCover(input){
   const prog=document.getElementById('cover-upload-progress');
   const fill=document.getElementById('cover-up-fill');
   const lbl=document.getElementById('cover-up-label');
-  prog.classList.add('active');fill.style.width='0%';lbl.textContent='আপলোড হচ্ছে...';
+  prog.classList.add('active');fill.style.width='0%';lbl.textContent='প্রসেস হচ্ছে...';
   try{
-    const url=await uploadToStorage(file,'profile/cover_'+Date.now()+'.'+file.name.split('.').pop(),p=>{fill.style.width=p+'%';lbl.textContent=p+'% সম্পন্ন';});
-    await db.ref('profile').update({cover:url});
+    await uploadProfileImage(file,'cover',p=>{fill.style.width=p+'%';lbl.textContent=p+'% সম্পন্ন';});
     lbl.textContent='আপলোড সম্পন্ন ✅';
     toast('কভার ফটো আপলোড সফল ✅','success');
     setTimeout(()=>{prog.classList.remove('active');fill.style.width='0%';},1500);
-  }catch(e){lbl.textContent='ব্যর্থ হয়েছে ❌';toast('আপলোড ব্যর্থ: '+e.message,'error');setTimeout(()=>prog.classList.remove('active'),1500);}
+  }catch(e){lbl.textContent='ব্যর্থ হয়েছে ❌';toast('আপলোড ব্যর্থ: '+friendlyUploadError(e),'error');setTimeout(()=>prog.classList.remove('active'),1500);}
   input.value='';
 }
 
@@ -1001,14 +1082,7 @@ async function saveUsername(){
     closeModal('username-modal');
     toast('Username সেট হয়েছে: @'+val,'success');
     document.getElementById('username-prompt').style.display='none';
-    updateHeaderUsername(val);
   }catch(e){toast('এরর: '+e.message,'error');}
-}
-
-function updateHeaderUsername(u){
-  const el=document.getElementById('header-username');
-  if(u){el.textContent='@'+u;el.classList.add('show');}
-  else el.classList.remove('show');
 }
 
 /* ══════════════ SHARE ══════════════ */
@@ -1062,15 +1136,11 @@ profileRef.on('value',snap=>{
   const name=d.name||'Ibrahim Khalil';
   document.getElementById('pf-name-el').innerHTML=escH(name)+' <span class="verified"><i class="fa-solid fa-circle-check"></i></span>';
   document.getElementById('cover-name').textContent=name;
-  document.getElementById('pf-role-el') && (document.getElementById('pf-role-el').textContent=d.role||'Digital Creator');
   document.getElementById('cover-role').textContent=d.role||'Digital Creator';
   document.getElementById('pf-bio-el').textContent=d.bio||'Time is relative, but one-way.';
   document.getElementById('vibe-text').textContent=d.vibe||'Current vibe...';
   document.getElementById('vibe-input').value=d.vibe||'';
-  document.getElementById('st-followers').textContent=fmtNum(d.followers||951);
-  document.getElementById('st-following').textContent=fmtNum(d.following||6);
-  document.getElementById('st-posts').textContent=fmtNum(d.posts||107);
-  document.getElementById('pf-views-el').textContent=fmtNum(d.views||0);
+  document.getElementById('st-views').textContent=fmtNum(d.views||0);
 
   // Role type tag
   const roleTypeEl=document.getElementById('pf-role-type');
@@ -1078,7 +1148,6 @@ profileRef.on('value',snap=>{
 
   // Username
   _username=d.username||'';
-  updateHeaderUsername(_username);
   const usernameEl=document.getElementById('pf-username-el');
   if(usernameEl){
     usernameEl.textContent=_username?'@'+_username:'';
