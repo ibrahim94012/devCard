@@ -1,24 +1,16 @@
 <!DOCTYPE html>
-<html lang="bn" data-theme="dark">
+<html lang="bn">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
-<title>DevCard — Ibrahim Khalil</title>
+<title>DevCard</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<!-- QRCode library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
-:root{--radius:14px;}
-[data-theme="dark"]{
-  --bg:#0a0a0f;--panel:#16161f;--panel2:#1c1c28;--panel3:#212130;
-  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.12);--border3:rgba(255,255,255,0.18);
-  --accent:#7fff6e;--accent2:#4ef0c0;--accent-dim:rgba(127,255,110,0.12);
-  --text:#e8e8f0;--text2:#8888a8;--text3:#3e3e5a;
-  --shadow:rgba(0,0,0,0.55);--modal-bg:rgba(0,0,0,0.78);
-  --glow1:rgba(127,255,110,0.06);--glow2:rgba(78,240,192,0.06);
-  --grid:rgba(127,255,110,0.025);
-  --danger:#ff4e6a;--warn:#ffb347;
-}
-[data-theme="light"]{
+:root{
+  --radius:14px;
   --bg:#f0f2f5;--panel:#fff;--panel2:#f0f2f5;--panel3:#e4e6ea;
   --border:rgba(0,0,0,0.07);--border2:rgba(0,0,0,0.13);--border3:rgba(0,0,0,0.2);
   --accent:#1877f2;--accent2:#0a7a5c;--accent-dim:rgba(24,119,242,0.1);
@@ -27,57 +19,71 @@
   --glow1:rgba(24,119,242,0.04);--glow2:rgba(10,122,92,0.04);
   --grid:rgba(24,119,242,0.04);
   --danger:#e53935;--warn:#f57c00;
+  --green:#42b72a;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html{scroll-behavior:smooth;}
-body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden;transition:background .3s,color .3s;padding-bottom:80px;}
-
-/* BG */
-.bg-grid{position:fixed;inset:0;background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:36px 36px;pointer-events:none;z-index:0;animation:gp 30s linear infinite;}
-@keyframes gp{to{background-position:36px 36px;}}
-.bg-glow{position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse 55% 40% at 15% 10%,var(--glow1),transparent 65%),radial-gradient(ellipse 45% 35% at 85% 90%,var(--glow2),transparent 65%);}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden;}
 .wrap{position:relative;z-index:1;max-width:520px;margin:0 auto;padding-bottom:2rem;}
 
 /* HEADER */
 header{display:flex;align-items:center;justify-content:space-between;padding:.8rem 1rem;position:sticky;top:0;z-index:300;background:var(--panel);border-bottom:1px solid var(--border2);backdrop-filter:blur(14px);}
 .logo{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;letter-spacing:-.02em;display:flex;align-items:center;gap:6px;}
 .logo span{color:var(--accent);}
-.logo-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 6px var(--accent);}
+.logo-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);}
 .hd-right{display:flex;gap:8px;align-items:center;}
 .icon-btn{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;border:1px solid var(--border2);background:var(--panel2);cursor:pointer;color:var(--text2);font-size:.88rem;transition:all .2s;flex-shrink:0;}
 .icon-btn:hover{border-color:var(--accent);color:var(--accent);}
 .icon-btn img{width:26px;height:26px;border-radius:50%;object-fit:cover;}
 
+/* USERNAME BADGE in header */
+.username-tag{font-family:'Space Mono',monospace;font-size:.6rem;color:var(--text2);background:var(--panel2);border:1px solid var(--border2);border-radius:100px;padding:4px 10px;display:none;}
+.username-tag.show{display:block;}
+
 /* ═══ PROFILE CARD ═══ */
 .profile-card{background:var(--panel);margin-bottom:10px;box-shadow:0 2px 12px var(--shadow);}
 
 /* ── Cover ── */
-.cover-wrap{position:relative;width:100%;height:210px;overflow:hidden;background:linear-gradient(135deg,#0d0d1a 0%,#131330 40%,#0a2040 100%);cursor:default;}
-[data-theme="light"] .cover-wrap{background:linear-gradient(135deg,#bbdefb,#90caf9,#64b5f6);}
+.cover-wrap{position:relative;width:100%;height:210px;overflow:hidden;background:linear-gradient(135deg,#bbdefb,#90caf9,#64b5f6);cursor:default;}
 .cover-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;transition:opacity .3s;}
-.cover-dim{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.65) 0%,rgba(0,0,0,.1) 60%,transparent 100%);z-index:1;}
+.cover-dim{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.55) 0%,rgba(0,0,0,.05) 60%,transparent 100%);z-index:1;}
 .cover-badge{position:absolute;bottom:14px;left:16px;z-index:3;color:#fff;}
 .cover-badge h2{font-family:'Syne',sans-serif;font-size:1.35rem;font-weight:800;text-shadow:0 2px 6px rgba(0,0,0,.7);}
 .cover-badge p{font-family:'Space Mono',monospace;font-size:.66rem;opacity:.85;margin-top:2px;text-shadow:0 1px 4px rgba(0,0,0,.7);}
 
-/* Cover edit button */
+/* Cover cam btn */
 .cover-cam-btn{position:absolute;bottom:10px;right:10px;z-index:3;background:rgba(0,0,0,.65);color:#fff;border:1.5px solid rgba(255,255,255,.25);border-radius:10px;padding:7px 13px;font-size:.72rem;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer;display:none;align-items:center;gap:6px;backdrop-filter:blur(6px);transition:background .2s;}
 .cover-cam-btn:hover{background:rgba(0,0,0,.85);}
 .admin-mode .cover-cam-btn{display:flex;}
 
-/* Upload progress ring on cover */
+/* Cover uploading overlay */
 .cover-uploading{position:absolute;inset:0;background:rgba(0,0,0,.55);z-index:4;display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#fff;font-family:'Space Mono',monospace;font-size:.72rem;}
 .cover-uploading.active{display:flex;}
 .ring{width:44px;height:44px;border:3px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin 1s linear infinite;}
+
+/* ── VIBE CLOUD (above cover) ── */
+.vibe-cloud-wrap{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:4;text-align:center;}
+.vibe-cloud{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.92);backdrop-filter:blur(10px);border-radius:22px 22px 22px 6px;padding:9px 16px;font-size:.82rem;color:#444;box-shadow:0 4px 16px rgba(0,0,0,.18);max-width:220px;border:1px solid rgba(255,255,255,.7);}
+.vibe-cloud::after{content:'';position:absolute;bottom:-10px;left:20px;width:0;height:0;border:5px solid transparent;border-top-color:rgba(255,255,255,0.92);}
+.vibe-dot{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);flex-shrink:0;animation:pulse 2s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+.vibe-text-el{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;}
+
+/* Admin vibe edit in cover */
+.vibe-edit-cover{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:5;display:none;align-items:center;gap:6px;background:rgba(255,255,255,.95);border-radius:22px;padding:6px 10px;border:1.5px solid var(--accent);box-shadow:0 4px 16px rgba(0,0,0,.2);}
+.admin-mode .vibe-edit-cover{display:flex;}
+.admin-mode .vibe-cloud-wrap{display:none;}
+.vibe-edit-cover input{border:none;background:transparent;font-size:.82rem;color:#333;outline:none;font-family:'DM Sans',sans-serif;width:160px;}
+.vibe-save{background:var(--accent);color:#fff;border:none;border-radius:100px;padding:5px 12px;font-size:.7rem;font-family:'Space Mono',monospace;cursor:pointer;font-weight:700;}
 
 /* ── Avatar Row ── */
 .av-row{display:flex;align-items:flex-end;justify-content:space-between;padding:0 1rem;margin-top:-48px;margin-bottom:.6rem;position:relative;z-index:5;}
 .av-wrap{position:relative;width:92px;height:92px;flex-shrink:0;}
 .av-img,.av-icon{width:92px;height:92px;border-radius:50%;border:4px solid var(--panel);background:var(--panel2);display:block;object-fit:cover;}
 .av-icon{display:flex;align-items:center;justify-content:center;font-size:2.2rem;color:var(--text3);}
-.online-dot{width:15px;height:15px;background:#42b72a;border-radius:50%;border:3px solid var(--panel);position:absolute;bottom:4px;right:4px;}
+.online-dot{width:15px;height:15px;background:var(--green);border-radius:50%;border:3px solid var(--panel);position:absolute;bottom:4px;right:4px;}
 .av-cam-btn{position:absolute;bottom:0;right:0;width:28px;height:28px;background:var(--panel);border:2px solid var(--panel);border-radius:50%;display:none;align-items:center;justify-content:center;cursor:pointer;font-size:.68rem;color:var(--text2);box-shadow:0 2px 8px var(--shadow);transition:all .2s;}
-.av-cam-btn:hover{background:var(--accent);color:#051200;border-color:var(--accent);}
+.av-cam-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent);}
 .admin-mode .av-cam-btn{display:flex;}
 .av-uploading-ring{position:absolute;inset:-4px;border:3px solid transparent;border-top-color:var(--accent);border-radius:50%;display:none;animation:spin 1s linear infinite;}
 .av-uploading-ring.active{display:block;}
@@ -85,55 +91,56 @@ header{display:flex;align-items:center;justify-content:space-between;padding:.8r
 /* Action buttons */
 .action-btns{display:flex;gap:7px;align-items:center;flex-wrap:wrap;justify-content:flex-end;flex:1;padding-left:10px;padding-top:52px;}
 .fb-btn{font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:600;padding:7px 14px;border-radius:9px;border:none;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .2s;white-space:nowrap;}
-.fb-btn.primary{background:var(--accent);color:#051200;}
-[data-theme="light"] .fb-btn.primary{color:#fff;}
+.fb-btn.primary{background:var(--accent);color:#fff;}
 .fb-btn.ghost{background:var(--panel2);color:var(--text);border:1px solid var(--border2);}
+.fb-btn.share-btn{background:var(--panel2);color:var(--text);border:1px solid var(--border2);}
 .fb-btn:hover{filter:brightness(1.08);transform:translateY(-1px);}
+.fb-btn.settings-btn{background:var(--panel2);color:var(--text2);border:1px solid var(--border2);}
 
 /* ── Profile Info ── */
 .pf-info{padding:.2rem 1rem 1rem;}
 .pf-name{font-family:'Syne',sans-serif;font-size:1.32rem;font-weight:800;display:flex;align-items:center;gap:6px;margin-bottom:2px;flex-wrap:wrap;}
 .verified{color:var(--accent);font-size:.88rem;}
+.pf-username{font-family:'Space Mono',monospace;font-size:.7rem;color:var(--text2);margin-bottom:.3rem;}
 .pf-role-tag{font-family:'Space Mono',monospace;font-size:.66rem;color:var(--accent);letter-spacing:.09em;text-transform:uppercase;margin-bottom:.5rem;}
 .pf-bio{font-size:.88rem;color:var(--text2);line-height:1.6;margin-bottom:.7rem;}
 
-/* Vibe */
-.vibe-row{display:flex;align-items:center;gap:8px;margin-bottom:.6rem;}
-.vibe-bubble{display:inline-flex;align-items:center;gap:8px;background:var(--panel2);border:1.5px solid var(--border2);border-radius:20px 20px 20px 4px;padding:7px 14px;font-size:.82rem;color:var(--text2);cursor:default;}
-.vibe-dot{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 6px var(--accent);flex-shrink:0;animation:pulse 2s ease-in-out infinite;}
-@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
-.vibe-edit-wrap{display:none;flex:1;align-items:center;gap:7px;}
-.admin-mode .vibe-edit-wrap{display:flex;}
-.admin-mode .vibe-bubble{display:none;}
-.vibe-edit-wrap input{flex:1;background:var(--panel2);border:1.5px solid var(--border2);border-radius:100px;padding:7px 14px;font-size:.82rem;color:var(--text);outline:none;font-family:'DM Sans',sans-serif;}
-.vibe-edit-wrap input:focus{border-color:var(--accent);}
-.vibe-save{background:var(--accent);color:#051200;border:none;border-radius:100px;padding:7px 14px;font-size:.72rem;font-family:'Space Mono',monospace;cursor:pointer;white-space:nowrap;font-weight:700;}
-
 /* Meta */
-.pf-meta{display:flex;flex-direction:column;gap:.38rem;margin-bottom:.75rem;}
-.pf-meta-item{display:flex;align-items:center;gap:8px;font-size:.81rem;color:var(--text2);}
-.pf-meta-item i{color:var(--accent2);width:16px;text-align:center;font-size:.85rem;}
+.pf-meta{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.75rem;}
+.pf-meta-item{display:inline-flex;align-items:center;gap:5px;font-size:.78rem;color:var(--text2);background:var(--panel2);border-radius:100px;padding:4px 10px;}
+.pf-meta-item i{color:var(--accent2);font-size:.8rem;}
 .pf-meta-item a{color:var(--accent2);text-decoration:none;}
 .pf-meta-item a:hover{text-decoration:underline;}
+.pf-type-tag{display:inline-flex;align-items:center;gap:5px;font-size:.75rem;color:var(--text2);margin-bottom:.5rem;}
+.pf-type-tag span{background:var(--panel2);border-radius:4px;padding:2px 8px;font-size:.73rem;}
 
 /* Stats */
 .pf-stats{display:flex;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:.85rem;}
-.pf-stat{flex:1;text-align:center;padding:.6rem .5rem;cursor:pointer;transition:background .2s;}
-.pf-stat:hover{background:var(--accent-dim);border-radius:8px;}
-.pf-stat-n{font-family:'Syne',sans-serif;font-size:1.18rem;font-weight:800;}
-.pf-stat-l{font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-top:2px;}
+.pf-stat{flex:1;text-align:center;padding:.7rem .5rem;cursor:pointer;transition:background .2s;border-right:1px solid var(--border);}
+.pf-stat:last-child{border-right:none;}
+.pf-stat:hover{background:var(--accent-dim);}
+.pf-stat-n{font-family:'Syne',sans-serif;font-size:1.18rem;font-weight:800;color:var(--text);}
+.pf-stat-l{font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);margin-top:2px;}
+
+/* Profile Views stat row */
+.pf-views-row{display:flex;align-items:center;gap:6px;font-size:.75rem;color:var(--text2);margin-bottom:.6rem;padding:6px 10px;background:var(--panel2);border-radius:100px;width:fit-content;}
+.pf-views-row i{color:var(--accent);}
 
 /* Socials */
 .pf-socials{display:flex;gap:7px;flex-wrap:wrap;}
 .pf-soc-link{display:flex;align-items:center;gap:6px;font-size:.77rem;color:var(--text2);text-decoration:none;background:var(--panel2);border:1px solid var(--border2);border-radius:9px;padding:6px 12px;transition:all .2s;}
 .pf-soc-link:hover{color:var(--accent);border-color:var(--accent);background:var(--accent-dim);}
 
+/* IG handle style */
+.pf-ig-handle{display:flex;align-items:center;gap:6px;font-size:.78rem;color:var(--text2);margin-top:.5rem;}
+.pf-ig-handle i{font-size:.9rem;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+
 /* ═══ SECTIONS ═══ */
 section{margin-bottom:10px;background:var(--panel);padding:1.1rem 1rem;box-shadow:0 1px 6px var(--shadow);}
 .sec-title{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;margin-bottom:.8rem;display:flex;align-items:center;gap:8px;}
 .sec-title i{color:var(--accent);}
 .sec-add-btn{margin-left:auto;background:var(--accent-dim);border:1px solid var(--accent);color:var(--accent);width:28px;height:28px;border-radius:50%;font-size:.7rem;cursor:pointer;display:none;align-items:center;justify-content:center;transition:all .2s;}
-.sec-add-btn:hover{background:var(--accent);color:#051200;}
+.sec-add-btn:hover{background:var(--accent);color:#fff;}
 .admin-mode .sec-add-btn{display:flex;}
 
 /* Skills */
@@ -161,8 +168,7 @@ section{margin-bottom:10px;background:var(--panel);padding:1.1rem 1rem;box-shado
 .project-links{display:flex;gap:7px;}
 .proj-link{flex:1;text-align:center;font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.05em;text-transform:uppercase;padding:8px;border-radius:9px;border:1px solid var(--border2);color:var(--text2);text-decoration:none;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:5px;}
 .proj-link:hover{border-color:var(--accent);color:var(--accent);}
-.proj-link.live{background:var(--accent);color:#051200;border-color:var(--accent);font-weight:700;}
-[data-theme="light"] .proj-link.live{color:#fff;}
+.proj-link.live{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:700;}
 
 /* Experience */
 .timeline{position:relative;padding-left:26px;}
@@ -181,28 +187,14 @@ section{margin-bottom:10px;background:var(--panel);padding:1.1rem 1rem;box-shado
 .ia-btn:hover{color:var(--text);border-color:var(--accent);}
 .ia-btn.del:hover{color:var(--danger);border-color:var(--danger);}
 
-/* Contact */
-.contact-form{background:var(--panel2);border:1px solid var(--border2);border-radius:var(--radius);padding:1.1rem;}
-.form-group{margin-bottom:.85rem;}
-.form-group label{font-family:'Space Mono',monospace;font-size:.57rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:5px;}
-.fg-input{width:100%;background:var(--panel);border:1.5px solid var(--border2);border-radius:10px;padding:.65rem .9rem;font-family:'DM Sans',sans-serif;font-size:.85rem;color:var(--text);outline:none;transition:border-color .2s;resize:vertical;}
-.fg-input:focus{border-color:var(--accent);}
-
-/* ═══ BOTTOM NAV ═══ */
-.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--panel);border-top:1px solid var(--border2);display:flex;justify-content:space-around;padding:9px 0 calc(9px + env(safe-area-inset-bottom));z-index:200;backdrop-filter:blur(14px);}
-.nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--text3);font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;transition:color .2s;background:none;border:none;padding:2px 8px;border-radius:8px;}
-.nav-item i{font-size:1rem;}
-.nav-item.active{color:var(--accent);}
-
 /* ═══ BUTTONS ═══ */
-.btn{font-family:'Space Mono',monospace;font-size:.68rem;letter-spacing:.07em;text-transform:uppercase;padding:11px 20px;border-radius:10px;border:none;background:var(--accent);color:#051200;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;font-weight:700;}
-[data-theme="light"] .btn{color:#fff;}
-.btn:hover{box-shadow:0 0 18px rgba(127,255,110,.3);transform:translateY(-1px);}
+.btn{font-family:'Space Mono',monospace;font-size:.68rem;letter-spacing:.07em;text-transform:uppercase;padding:11px 20px;border-radius:10px;border:none;background:var(--accent);color:#fff;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;font-weight:700;}
+.btn:hover{filter:brightness(1.1);transform:translateY(-1px);}
 .btn:disabled{opacity:.5;cursor:not-allowed;transform:none;}
 .btn.outline{background:transparent;color:var(--text2);border:1px solid var(--border2);}
 .btn.outline:hover{color:var(--text);border-color:var(--accent);box-shadow:none;}
 .btn.danger{background:var(--danger);color:#fff;border:none;}
-.btn.danger:hover{box-shadow:0 0 16px rgba(255,78,106,.35);}
+.btn.danger:hover{filter:brightness(1.1);}
 .btn.google{background:#fff;color:#333;border:1.5px solid #dadce0;font-family:'DM Sans',sans-serif;font-size:.9rem;text-transform:none;letter-spacing:0;padding:12px 20px;}
 .btn.google:hover{box-shadow:0 2px 10px rgba(0,0,0,.18);}
 .g-icon{width:20px;height:20px;flex-shrink:0;}
@@ -220,8 +212,8 @@ section{margin-bottom:10px;background:var(--panel);padding:1.1rem 1rem;box-shado
 .modal-close:hover{background:var(--panel2);color:var(--text);}
 
 /* Profile Edit Tabs */
-.tab-row{display:flex;gap:4px;background:var(--panel2);border-radius:12px;padding:4px;margin-bottom:1.1rem;}
-.tab-btn{flex:1;font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.05em;text-transform:uppercase;padding:8px 4px;border-radius:9px;border:none;background:transparent;color:var(--text3);cursor:pointer;transition:all .2s;}
+.tab-row{display:flex;gap:4px;background:var(--panel2);border-radius:12px;padding:4px;margin-bottom:1.1rem;overflow-x:auto;}
+.tab-btn{flex:1;font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.04em;text-transform:uppercase;padding:8px 4px;border-radius:9px;border:none;background:transparent;color:var(--text3);cursor:pointer;transition:all .2s;white-space:nowrap;}
 .tab-btn.active{background:var(--panel);color:var(--accent);font-weight:700;box-shadow:0 2px 8px var(--shadow);}
 .tab-pane{display:none;}
 .tab-pane.active{display:block;}
@@ -268,10 +260,41 @@ section{margin-bottom:10px;background:var(--panel);padding:1.1rem 1rem;box-shado
 .or-div{display:flex;align-items:center;gap:.7rem;margin:.9rem 0;color:var(--text3);font-size:.68rem;font-family:'Space Mono',monospace;}
 .or-div::before,.or-div::after{content:'';flex:1;height:1px;background:var(--border2);}
 
+/* Settings Modal */
+.settings-list{display:flex;flex-direction:column;gap:0;}
+.settings-item{display:flex;align-items:center;gap:12px;padding:.9rem 0;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;}
+.settings-item:last-child{border-bottom:none;}
+.settings-item:hover{color:var(--accent);}
+.settings-item i{width:22px;text-align:center;color:var(--accent);font-size:1rem;}
+.settings-item-text{flex:1;}
+.settings-item-text strong{display:block;font-size:.9rem;font-weight:600;}
+.settings-item-text span{display:block;font-size:.73rem;color:var(--text2);margin-top:1px;}
+.settings-item .arrow{color:var(--text3);font-size:.75rem;}
+.settings-danger{color:var(--danger)!important;}
+.settings-danger i{color:var(--danger)!important;}
+
+/* Username Setup Modal */
+.username-modal-info{background:var(--panel2);border-radius:12px;padding:1rem;margin-bottom:1rem;font-size:.82rem;color:var(--text2);line-height:1.6;}
+.username-preview{font-family:'Space Mono',monospace;font-size:.7rem;color:var(--accent);background:var(--accent-dim);border-radius:8px;padding:6px 12px;margin-top:.5rem;word-break:break-all;}
+.username-check{display:flex;align-items:center;gap:6px;font-size:.75rem;margin-top:.4rem;}
+.username-check.ok{color:var(--green);}
+.username-check.err{color:var(--danger);}
+
+/* Share Modal */
+.share-url-box{display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--border2);border-radius:10px;padding:10px 14px;margin-bottom:1rem;}
+.share-url-box input{flex:1;background:none;border:none;font-family:'Space Mono',monospace;font-size:.68rem;color:var(--text2);outline:none;overflow:hidden;text-overflow:ellipsis;}
+.copy-btn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:.7rem;font-family:'Space Mono',monospace;cursor:pointer;font-weight:700;white-space:nowrap;transition:all .2s;}
+.copy-btn:hover{filter:brightness(1.1);}
+.qr-wrap{display:flex;justify-content:center;padding:1.2rem;background:var(--panel2);border-radius:14px;margin-bottom:1rem;}
+#qr-code canvas,#qr-code img{border-radius:8px;}
+.share-btns-row{display:flex;gap:8px;}
+.share-soc-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:10px;border-radius:10px;border:1px solid var(--border2);background:var(--panel2);color:var(--text2);font-size:.78rem;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;transition:all .2s;text-decoration:none;}
+.share-soc-btn:hover{border-color:var(--accent);color:var(--accent);}
+
 /* Toast */
-.toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--panel);border:1px solid var(--border2);border-radius:100px;padding:10px 22px;font-family:'Space Mono',monospace;font-size:.68rem;color:var(--text);box-shadow:0 8px 28px var(--shadow);z-index:900;opacity:0;transition:all .3s;pointer-events:none;max-width:90vw;text-align:center;white-space:nowrap;}
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--panel);border:1px solid var(--border2);border-radius:100px;padding:10px 22px;font-family:'Space Mono',monospace;font-size:.68rem;color:var(--text);box-shadow:0 8px 28px var(--shadow);z-index:900;opacity:0;transition:all .3s;pointer-events:none;max-width:90vw;text-align:center;white-space:nowrap;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-.toast.success{border-color:var(--accent);color:var(--accent);}
+.toast.success{border-color:var(--green);color:var(--green);}
 .toast.error{border-color:var(--danger);color:var(--danger);}
 
 /* Misc */
@@ -283,19 +306,35 @@ section{margin-bottom:10px;background:var(--panel);padding:1.1rem 1rem;box-shado
 @keyframes fi{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
 ::-webkit-scrollbar{width:5px;}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:10px;}
+
+/* Form */
+.form-group{margin-bottom:.85rem;}
+.form-group label{font-family:'Space Mono',monospace;font-size:.57rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:5px;}
+.fg-input{width:100%;background:var(--panel2);border:1.5px solid var(--border2);border-radius:10px;padding:.65rem .9rem;font-family:'DM Sans',sans-serif;font-size:.85rem;color:var(--text);outline:none;transition:border-color .2s;resize:vertical;}
+.fg-input:focus{border-color:var(--accent);}
+
+/* Dropdown button with notification dot */
+.pf-dropdown-btn{position:relative;display:flex;align-items:center;justify-content:center;width:36px;height:36px;background:var(--panel3);border-radius:50%;border:1px solid var(--border2);cursor:pointer;color:var(--text2);transition:all .2s;}
+.pf-dropdown-btn:hover{border-color:var(--accent);color:var(--accent);}
+.pf-notif-dot{width:10px;height:10px;background:var(--danger);border-radius:50%;border:2px solid var(--panel);position:absolute;top:0;right:0;}
+
+/* Username setup prompt */
+.username-prompt{background:linear-gradient(135deg,var(--accent-dim),var(--panel2));border:1.5px solid var(--accent);border-radius:12px;padding:.9rem 1rem;margin-bottom:.7rem;display:flex;align-items:center;gap:10px;cursor:pointer;transition:all .2s;}
+.username-prompt:hover{transform:translateY(-1px);box-shadow:0 4px 16px var(--shadow);}
+.username-prompt i{color:var(--accent);font-size:1.1rem;}
+.username-prompt-text strong{display:block;font-size:.85rem;font-weight:700;color:var(--text);}
+.username-prompt-text span{display:block;font-size:.73rem;color:var(--text2);margin-top:1px;}
 </style>
 </head>
 <body>
-<div class="bg-grid"></div>
-<div class="bg-glow"></div>
 <div class="wrap">
 
 <!-- HEADER -->
 <header>
   <div class="logo"><div class="logo-dot"></div>Dev<span>Card</span></div>
   <div class="hd-right">
-    <button class="icon-btn" onclick="toggleTheme()" title="Theme"><i class="fa-solid fa-circle-half-stroke"></i></button>
-    <button class="icon-btn" id="login-btn" onclick="openLoginModal()"><i class="fa-solid fa-user"></i></button>
+    <span class="username-tag" id="header-username"></span>
+    <button class="icon-btn" id="login-btn" onclick="openLoginModal()" title="লগইন"><i class="fa-solid fa-user"></i></button>
   </div>
 </header>
 
@@ -305,6 +344,22 @@ section{margin-bottom:10px;background:var(--panel);padding:1.1rem 1rem;box-shado
   <!-- Cover Photo -->
   <div class="cover-wrap" id="cover-wrap">
     <div class="cover-dim"></div>
+
+    <!-- Vibe Cloud (above cover for visitors) -->
+    <div class="vibe-cloud-wrap" id="vibe-cloud-wrap">
+      <div class="vibe-cloud">
+        <div class="vibe-dot"></div>
+        <span class="vibe-text-el" id="vibe-text">আপনার vibe এখানে থাকবে...</span>
+      </div>
+    </div>
+
+    <!-- Vibe Edit (admin mode) -->
+    <div class="vibe-edit-cover" id="vibe-edit-cover">
+      <div class="vibe-dot"></div>
+      <input type="text" id="vibe-input" placeholder="Current vibe লিখুন...">
+      <button class="vibe-save" onclick="saveVibe()">✓</button>
+    </div>
+
     <div class="cover-badge"><h2 id="cover-name">Ibrahim Khalil</h2><p id="cover-role">Digital Creator</p></div>
     <button class="cover-cam-btn" onclick="openCoverUpload()">
       <i class="fa-solid fa-camera"></i> কভার পরিবর্তন
@@ -312,7 +367,6 @@ section{margin-bottom:10px;background:var(--panel);padding:1.1rem 1rem;box-shado
     <div class="cover-uploading" id="cover-uploading">
       <div class="ring"></div><span>আপলোড হচ্ছে...</span>
     </div>
-    <!-- hidden file input for cover -->
     <input type="file" id="cover-file-input" accept="image/*" style="display:none" onchange="handleCoverUpload(this)">
   </div>
 
@@ -328,34 +382,64 @@ section{margin-bottom:10px;background:var(--panel);padding:1.1rem 1rem;box-shado
       <input type="file" id="avatar-file-input" accept="image/*" style="display:none" onchange="handleAvatarUpload(this)">
     </div>
     <div class="action-btns">
-      <button class="fb-btn primary" id="edit-pf-btn" onclick="openProfileModal()" style="display:none">
-        <i class="fa-solid fa-pen-to-square"></i> প্রোফাইল এডিট
+      <!-- Share button always visible -->
+      <button class="fb-btn share-btn" onclick="openShareModal()">
+        <i class="fa-solid fa-share-nodes"></i> শেয়ার
       </button>
+      <!-- Edit button (admin only) -->
+      <button class="fb-btn primary" id="edit-pf-btn" onclick="openProfileModal()" style="display:none">
+        <i class="fa-solid fa-pen-to-square"></i> এডিট
+      </button>
+      <!-- Settings button (admin only) -->
+      <button class="fb-btn settings-btn" id="settings-btn" onclick="openModal('settings-modal')" style="display:none">
+        <i class="fa-solid fa-gear"></i>
+      </button>
+      <!-- Login button (visitors) -->
       <button class="fb-btn ghost" id="login-action-btn" onclick="openLoginModal()">
         <svg width="15" height="15" viewBox="0 0 24 24" style="flex-shrink:0"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66 2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-        Gmail Login
+        Login
       </button>
+      <!-- Dropdown with notification (admin) -->
+      <div class="pf-dropdown-btn" id="pf-dropdown-btn" onclick="openModal('settings-modal')" style="display:none" title="আরো অপশন">
+        <i class="fa-solid fa-chevron-down"></i>
+        <div class="pf-notif-dot"></div>
+      </div>
     </div>
   </div>
 
   <!-- Profile Info -->
   <div class="pf-info">
     <div class="pf-name" id="pf-name-el">Ibrahim Khalil <span class="verified"><i class="fa-solid fa-circle-check"></i></span></div>
-    <div class="pf-role-tag" id="pf-role-el">Digital Creator</div>
+    <div class="pf-username" id="pf-username-el"></div>
 
-    <!-- Vibe -->
-    <div class="vibe-row">
-      <div class="vibe-bubble"><div class="vibe-dot"></div><span id="vibe-text">আপনার vibe এখানে থাকবে...</span></div>
-      <div class="vibe-edit-wrap">
-        <input type="text" id="vibe-input" placeholder="এখন কেমন লাগছে? লিখুন...">
-        <button class="vibe-save" onclick="saveVibe()">✓</button>
+    <!-- Username setup prompt (admin, no username set) -->
+    <div class="username-prompt" id="username-prompt" style="display:none" onclick="openUsernameModal()">
+      <i class="fa-solid fa-at"></i>
+      <div class="username-prompt-text">
+        <strong>Username সেট করুন</strong>
+        <span>প্রোফাইলের জন্য একটি ইউনিক URL পান</span>
       </div>
+      <i class="fa-solid fa-chevron-right" style="color:var(--text3);font-size:.8rem;margin-left:auto;"></i>
     </div>
+
+    <div class="pf-type-tag" id="pf-type-tag"><i class="fa-solid fa-user" style="font-size:.75rem;color:var(--text2);"></i><span>Profile</span> · <span id="pf-role-type">Digital creator</span></div>
 
     <div class="pf-bio" id="pf-bio-el">Time is relative, but one-way.</div>
 
-    <!-- Meta info -->
+    <!-- Meta info (Facebook-style inline chips) -->
     <div class="pf-meta" id="pf-meta"></div>
+
+    <!-- Instagram handle -->
+    <div class="pf-ig-handle" id="pf-ig-handle" style="display:none">
+      <i class="fa-brands fa-instagram"></i>
+      <span id="pf-ig-text"></span>
+    </div>
+
+    <!-- Profile views -->
+    <div class="pf-views-row">
+      <i class="fa-solid fa-eye"></i>
+      <span id="pf-views-el">0</span> জন প্রোফাইল দেখেছেন
+    </div>
 
     <!-- Stats -->
     <div class="pf-stats">
@@ -369,6 +453,14 @@ section{margin-bottom:10px;background:var(--panel);padding:1.1rem 1rem;box-shado
   </div>
 </div>
 
+<!-- EXPERIENCE (উপরে) -->
+<section class="fade-in">
+  <div class="sec-title"><i class="fa-solid fa-briefcase"></i> দক্ষতা ও অভিজ্ঞতা
+    <button class="sec-add-btn" onclick="openExpModal()"><i class="fa-solid fa-plus"></i></button>
+  </div>
+  <div class="timeline" id="exp-wrap"><div class="loader"><i class="fa-solid fa-spinner spin"></i> লোড হচ্ছে...</div></div>
+</section>
+
 <!-- SKILLS -->
 <section class="fade-in">
   <div class="sec-title"><i class="fa-solid fa-code"></i> দক্ষতা
@@ -377,7 +469,7 @@ section{margin-bottom:10px;background:var(--panel);padding:1.1rem 1rem;box-shado
   <div class="skills-grid" id="skills-wrap"><div class="loader"><i class="fa-solid fa-spinner spin"></i> লোড হচ্ছে...</div></div>
 </section>
 
-<!-- PROJECTS -->
+<!-- PROJECTS (সবার নিচে) -->
 <section class="fade-in">
   <div class="sec-title"><i class="fa-solid fa-diagram-project"></i> প্রজেক্ট
     <button class="sec-add-btn" onclick="openProjectModal()"><i class="fa-solid fa-plus"></i></button>
@@ -385,35 +477,7 @@ section{margin-bottom:10px;background:var(--panel);padding:1.1rem 1rem;box-shado
   <div id="projects-wrap"><div class="loader"><i class="fa-solid fa-spinner spin"></i> লোড হচ্ছে...</div></div>
 </section>
 
-<!-- EXPERIENCE -->
-<section class="fade-in">
-  <div class="sec-title"><i class="fa-solid fa-briefcase"></i> অভিজ্ঞতা
-    <button class="sec-add-btn" onclick="openExpModal()"><i class="fa-solid fa-plus"></i></button>
-  </div>
-  <div class="timeline" id="exp-wrap"><div class="loader"><i class="fa-solid fa-spinner spin"></i> লোড হচ্ছে...</div></div>
-</section>
-
-<!-- CONTACT -->
-<section class="fade-in" id="contact-section">
-  <div class="sec-title"><i class="fa-solid fa-envelope"></i> যোগাযোগ</div>
-  <div class="contact-form">
-    <div class="form-group"><label>নাম</label><input class="fg-input" type="text" id="msg-name" placeholder="আপনার নাম"></div>
-    <div class="form-group"><label>ইমেইল</label><input class="fg-input" type="email" id="msg-email" placeholder="email@example.com"></div>
-    <div class="form-group"><label>মেসেজ</label><textarea class="fg-input" id="msg-text" rows="3" placeholder="আপনার মেসেজ..."></textarea></div>
-    <button class="btn" onclick="sendMessage()"><i class="fa-solid fa-paper-plane"></i> পাঠান</button>
-  </div>
-</section>
-
 </div><!-- /wrap -->
-
-<!-- BOTTOM NAV -->
-<div class="bottom-nav">
-  <button class="nav-item active" onclick="navTo('hero-section',this)"><i class="fa-solid fa-house"></i>হোম</button>
-  <button class="nav-item" onclick="navTo('skills-wrap',this)"><i class="fa-solid fa-code"></i>স্কিল</button>
-  <button class="nav-item" onclick="navTo('projects-wrap',this)"><i class="fa-solid fa-diagram-project"></i>প্রজেক্ট</button>
-  <button class="nav-item" onclick="navTo('exp-wrap',this)"><i class="fa-solid fa-briefcase"></i>অভিজ্ঞতা</button>
-  <button class="nav-item" onclick="navTo('contact-section',this)"><i class="fa-solid fa-envelope"></i>যোগাযোগ</button>
-</div>
 
 <div class="toast" id="toast"></div>
 
@@ -448,6 +512,101 @@ section{margin-bottom:10px;background:var(--panel);padding:1.1rem 1rem;box-shado
   </div>
 </div>
 
+<!-- ══════════════ SETTINGS MODAL ══════════════ -->
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">সেটিংস <button class="modal-close" onclick="closeModal('settings-modal')"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="settings-list">
+      <div class="settings-item" onclick="closeModal('settings-modal');openProfileModal()">
+        <i class="fa-solid fa-pen-to-square"></i>
+        <div class="settings-item-text"><strong>প্রোফাইল এডিট</strong><span>নাম, বায়ো, সোশ্যাল লিংক পরিবর্তন করুন</span></div>
+        <i class="fa-solid fa-chevron-right arrow"></i>
+      </div>
+      <div class="settings-item" onclick="closeModal('settings-modal');openUsernameModal()">
+        <i class="fa-solid fa-at"></i>
+        <div class="settings-item-text"><strong>Username পরিবর্তন</strong><span>প্রোফাইল URL কাস্টমাইজ করুন</span></div>
+        <i class="fa-solid fa-chevron-right arrow"></i>
+      </div>
+      <div class="settings-item" onclick="closeModal('settings-modal');openShareModal()">
+        <i class="fa-solid fa-share-nodes"></i>
+        <div class="settings-item-text"><strong>প্রোফাইল শেয়ার করুন</strong><span>URL ও QR কোড শেয়ার করুন</span></div>
+        <i class="fa-solid fa-chevron-right arrow"></i>
+      </div>
+      <div class="settings-item" onclick="closeModal('settings-modal');openSkillModal()">
+        <i class="fa-solid fa-code"></i>
+        <div class="settings-item-text"><strong>স্কিল যুক্ত করুন</strong><span>নতুন দক্ষতা যোগ করুন</span></div>
+        <i class="fa-solid fa-chevron-right arrow"></i>
+      </div>
+      <div class="settings-item" onclick="closeModal('settings-modal');openExpModal()">
+        <i class="fa-solid fa-briefcase"></i>
+        <div class="settings-item-text"><strong>অভিজ্ঞতা যুক্ত করুন</strong><span>নতুন কর্ম-অভিজ্ঞতা যোগ করুন</span></div>
+        <i class="fa-solid fa-chevron-right arrow"></i>
+      </div>
+      <div class="settings-item" onclick="closeModal('settings-modal');openProjectModal()">
+        <i class="fa-solid fa-diagram-project"></i>
+        <div class="settings-item-text"><strong>প্রজেক্ট যুক্ত করুন</strong><span>নতুন প্রজেক্ট যোগ করুন</span></div>
+        <i class="fa-solid fa-chevron-right arrow"></i>
+      </div>
+      <div class="settings-item settings-danger" onclick="doLogout();closeModal('settings-modal');">
+        <i class="fa-solid fa-right-from-bracket"></i>
+        <div class="settings-item-text"><strong>লগআউট</strong><span>একাউন্ট থেকে বেরিয়ে যান</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ USERNAME MODAL ══════════════ -->
+<div class="modal-overlay" id="username-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Username সেট করুন <button class="modal-close" onclick="closeModal('username-modal')"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="username-modal-info">
+      <b>Username</b> হলো আপনার প্রোফাইলের ইউনিক ঠিকানা। এটি URL-এ দেখা যাবে।<br>
+      <div class="username-preview" id="username-preview-url">উদাহরণ: yoursite.com/<b>ibrahim</b></div>
+    </div>
+    <div class="form-group">
+      <label>Username (ইংরেজিতে, ছোট হাতে)</label>
+      <div style="position:relative">
+        <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:.85rem;font-family:'Space Mono',monospace;">@</span>
+        <input class="fg-input" type="text" id="username-input" placeholder="ibrahim094is" style="padding-left:32px;" oninput="previewUsername(this.value)">
+      </div>
+      <div class="username-check" id="username-check" style="display:none"></div>
+    </div>
+    <div style="font-size:.72rem;color:var(--text2);margin-bottom:1rem;">শুধুমাত্র অক্ষর (a-z), সংখ্যা (0-9) এবং আন্ডারস্কোর (_) ব্যবহার করা যাবে। ৩-২০ অক্ষরের মধ্যে হতে হবে।</div>
+    <button class="btn" onclick="saveUsername()"><i class="fa-solid fa-check"></i> সেট করুন</button>
+  </div>
+</div>
+
+<!-- ══════════════ SHARE MODAL ══════════════ -->
+<div class="modal-overlay" id="share-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title"><i class="fa-solid fa-share-nodes" style="color:var(--accent);margin-right:8px;"></i>প্রোফাইল শেয়ার <button class="modal-close" onclick="closeModal('share-modal')"><i class="fa-solid fa-xmark"></i></button></div>
+    
+    <div class="share-url-box">
+      <input type="text" id="share-url-input" readonly>
+      <button class="copy-btn" onclick="copyProfileUrl()"><i class="fa-solid fa-copy"></i> কপি</button>
+    </div>
+
+    <div class="qr-wrap">
+      <div id="qr-code"></div>
+    </div>
+
+    <div class="share-btns-row">
+      <a class="share-soc-btn" id="share-fb" target="_blank" rel="noopener">
+        <i class="fa-brands fa-facebook-f" style="color:#1877f2;"></i> Facebook
+      </a>
+      <a class="share-soc-btn" id="share-wa" target="_blank" rel="noopener">
+        <i class="fa-brands fa-whatsapp" style="color:#25d366;"></i> WhatsApp
+      </a>
+      <a class="share-soc-btn" id="share-tw" target="_blank" rel="noopener">
+        <i class="fa-brands fa-x-twitter"></i> Twitter/X
+      </a>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════ PROFILE EDIT MODAL ══════════════ -->
 <div class="modal-overlay" id="profile-modal">
   <div class="modal">
@@ -457,7 +616,7 @@ section{margin-bottom:10px;background:var(--panel);padding:1.1rem 1rem;box-shado
     <!-- Tabs -->
     <div class="tab-row">
       <button class="tab-btn active" onclick="switchTab('tab-photos')"><i class="fa-solid fa-image"></i> ছবি</button>
-      <button class="tab-btn" onclick="switchTab('tab-basic')"><i class="fa-solid fa-user"></i> মূল তথ্য</button>
+      <button class="tab-btn" onclick="switchTab('tab-basic')"><i class="fa-solid fa-user"></i> তথ্য</button>
       <button class="tab-btn" onclick="switchTab('tab-social')"><i class="fa-solid fa-link"></i> সোশ্যাল</button>
       <button class="tab-btn" onclick="switchTab('tab-stats')"><i class="fa-solid fa-chart-bar"></i> স্ট্যাটস</button>
     </div>
@@ -466,12 +625,10 @@ section{margin-bottom:10px;background:var(--panel);padding:1.1rem 1rem;box-shado
     <div class="tab-pane active" id="tab-photos">
       <h4 style="font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;margin-bottom:.8rem;color:var(--text2);">প্রোফাইল ছবি</h4>
       <div class="av-upload-row">
-        <div class="av-preview-circle" id="av-preview-circle">
-          <i class="fa-solid fa-user"></i>
-        </div>
+        <div class="av-preview-circle" id="av-preview-circle"><i class="fa-solid fa-user"></i></div>
         <div class="av-upload-info">
           <h4>প্রোফাইল ফটো</h4>
-          <p>JPG, PNG বা WEBP • সর্বোচ্চ ৫ MB</p>
+          <p>JPG, PNG বা WEBP • সর্বোচ্চ ৫ MB<br>Firebase Storage-এ আপলোড হবে</p>
         </div>
       </div>
       <div class="upload-zone" id="av-upload-zone">
@@ -490,6 +647,7 @@ section{margin-bottom:10px;background:var(--panel);padding:1.1rem 1rem;box-shado
       <div class="sec-div"></div>
 
       <h4 style="font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;margin-bottom:.8rem;color:var(--text2);">কভার ফটো</h4>
+      <p style="font-size:.75rem;color:var(--text2);margin-bottom:.6rem;">১৬:৯ অনুপাতের ছবি সবচেয়ে ভালো। Firebase Storage-এ সংরক্ষিত হবে।</p>
       <div class="upload-zone" id="cover-upload-zone" style="height:auto">
         <input type="file" accept="image/*" onchange="previewAndUploadCover(this)">
         <img class="uz-cover-preview" id="cover-modal-preview">
@@ -531,8 +689,8 @@ section{margin-bottom:10px;background:var(--panel);padding:1.1rem 1rem;box-shado
 
     <!-- TAB: Social -->
     <div class="tab-pane" id="tab-social">
-      <div class="form-group"><label><i class="fa-brands fa-instagram" style="color:#e1306c;margin-right:6px;"></i>Instagram</label>
-        <input class="fg-input" type="text" id="pf-instagram" placeholder="username (@ ছাড়া)"></div>
+      <div class="form-group"><label><i class="fa-brands fa-instagram" style="color:#e1306c;margin-right:6px;"></i>Instagram Username</label>
+        <input class="fg-input" type="text" id="pf-instagram" placeholder="ibrahimkhalil (@ ছাড়া)"></div>
       <div class="form-group"><label><i class="fa-brands fa-facebook-f" style="color:#1877f2;margin-right:6px;"></i>Facebook URL</label>
         <input class="fg-input" type="text" id="pf-facebook" placeholder="https://facebook.com/..."></div>
       <div class="form-group"><label><i class="fa-brands fa-github" style="margin-right:6px;"></i>GitHub URL</label>
@@ -557,7 +715,6 @@ section{margin-bottom:10px;background:var(--panel);padding:1.1rem 1rem;box-shado
         <input class="fg-input" type="number" id="pf-posts" placeholder="107"></div>
       <button class="btn" onclick="saveProfile()"><i class="fa-solid fa-floppy-disk"></i> সেভ করুন</button>
     </div>
-
   </div>
 </div>
 
@@ -614,11 +771,16 @@ section{margin-bottom:10px;background:var(--panel);padding:1.1rem 1rem;box-shado
 const fbCfg={apiKey:"AIzaSyA_vr4EXR57ap2CRxlS1JpK6wHqIwlU8Rc",authDomain:"devcard-6b634.firebaseapp.com",databaseURL:"https://devcard-6b634-default-rtdb.firebaseio.com",projectId:"devcard-6b634",storageBucket:"devcard-6b634.firebasestorage.app",messagingSenderId:"754891867884",appId:"1:754891867884:web:f6ff7e2f8d2fcf8ae147c9"};
 firebase.initializeApp(fbCfg);
 const auth=firebase.auth(), db=firebase.database(), storage=firebase.storage();
-let isAdmin=false, _pd={};
+let isAdmin=false, _pd={}, _username='';
 
-/* ── Theme ── */
-function toggleTheme(){const n=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',n);localStorage.setItem('dc-theme',n);}
-(()=>{const s=localStorage.getItem('dc-theme');if(s)document.documentElement.setAttribute('data-theme',s);})();
+/* ── URL Username Routing ── */
+function getUrlUsername(){
+  const p=window.location.pathname.replace('/','').trim();
+  if(p&&/^[a-z0-9_]{3,20}$/.test(p))return p;
+  const params=new URLSearchParams(window.location.search);
+  return params.get('u')||'';
+}
+const _urlUser=getUrlUsername();
 
 /* ── Toast ── */
 let _tt;
@@ -633,16 +795,13 @@ function closeModal(id){document.getElementById(id).classList.remove('show');}
 function openModal(id){document.getElementById(id).classList.add('show');}
 document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('show');}));
 
-/* ── Nav ── */
-function navTo(id,btn){document.getElementById(id).scrollIntoView({behavior:'smooth',block:'start'});document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));btn.classList.add('active');}
-
 /* ── Tabs ── */
 function switchTab(id){
   document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   const idx=['tab-photos','tab-basic','tab-social','tab-stats'].indexOf(id);
-  document.querySelectorAll('.tab-btn')[idx].classList.add('active');
+  if(idx>=0)document.querySelectorAll('.tab-btn')[idx].classList.add('active');
 }
 
 /* ══════════════ AUTH ══════════════ */
@@ -687,13 +846,34 @@ auth.onAuthStateChanged(u=>{
   const lb=document.getElementById('login-btn');
   lb.innerHTML=isAdmin?`<img src="${u.photoURL||avUrl(u.displayName||'U')}" alt="user">`:'<i class="fa-solid fa-user"></i>';
   document.getElementById('edit-pf-btn').style.display=isAdmin?'flex':'none';
+  document.getElementById('settings-btn').style.display=isAdmin?'flex':'none';
+  document.getElementById('pf-dropdown-btn').style.display=isAdmin?'flex':'none';
   document.getElementById('login-action-btn').style.display=isAdmin?'none':'flex';
+
+  // Show username prompt if admin and no username
+  if(isAdmin){
+    db.ref('profile/username').once('value').then(s=>{
+      const hasUsername=!!s.val();
+      document.getElementById('username-prompt').style.display=hasUsername?'none':'flex';
+    });
+  } else {
+    document.getElementById('username-prompt').style.display='none';
+  }
+  
+  // Track profile view for visitors
+  if(!isAdmin){trackView();}
 });
 
-function avUrl(n){return'https://ui-avatars.com/api/?name='+encodeURIComponent(n)+'&background=7fff6e&color=051200&bold=true';}
+function avUrl(n){return'https://ui-avatars.com/api/?name='+encodeURIComponent(n)+'&background=1877f2&color=fff&bold=true';}
+
+/* ══════════════ PROFILE VIEWS ══════════════ */
+function trackView(){
+  const viewRef=db.ref('profile/views');
+  viewRef.transaction(v=>(v||0)+1);
+}
 
 /* ══════════════ IMAGE UPLOAD (Firebase Storage) ══════════════ */
-function uploadToStorage(file, path, onProgress){
+function uploadToStorage(file,path,onProgress){
   return new Promise((resolve,reject)=>{
     const ref=storage.ref(path);
     const task=ref.put(file);
@@ -716,7 +896,7 @@ async function handleAvatarUpload(input){
   const ring=document.getElementById('av-uploading-ring');
   ring.classList.add('active');
   try{
-    const url=await uploadToStorage(file,'profile/avatar_'+Date.now()+'.'+file.name.split('.').pop(), ()=>{});
+    const url=await uploadToStorage(file,'profile/avatar_'+Date.now()+'.'+file.name.split('.').pop(),()=>{});
     await db.ref('profile').update({avatar:url});
     toast('প্রোফাইল ছবি আপলোড সফল ✅','success');
   }catch(e){toast('আপলোড ব্যর্থ: '+e.message,'error');}
@@ -734,7 +914,7 @@ async function handleCoverUpload(input){
   const up=document.getElementById('cover-uploading');
   up.classList.add('active');
   try{
-    const url=await uploadToStorage(file,'profile/cover_'+Date.now()+'.'+file.name.split('.').pop(), ()=>{});
+    const url=await uploadToStorage(file,'profile/cover_'+Date.now()+'.'+file.name.split('.').pop(),()=>{});
     await db.ref('profile').update({cover:url});
     toast('কভার ফটো আপলোড সফল ✅','success');
   }catch(e){toast('আপলোড ব্যর্থ: '+e.message,'error');}
@@ -745,20 +925,18 @@ async function handleCoverUpload(input){
 async function previewAndUploadAvatar(input){
   const file=input.files[0]; if(!file)return;
   if(file.size>5*1024*1024){toast('ছবির আকার ৫ MB-এর বেশি হওয়া যাবে না','error');return;}
-  // preview
   const reader=new FileReader();
   reader.onload=e=>{
     const circle=document.getElementById('av-preview-circle');
     circle.innerHTML=`<img src="${e.target.result}" alt="preview" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
   };
   reader.readAsDataURL(file);
-  // upload
   const prog=document.getElementById('av-upload-progress');
   const fill=document.getElementById('av-up-fill');
   const lbl=document.getElementById('av-up-label');
   prog.classList.add('active');fill.style.width='0%';lbl.textContent='আপলোড হচ্ছে...';
   try{
-    const url=await uploadToStorage(file,'profile/avatar_'+Date.now()+'.'+file.name.split('.').pop(), p=>{fill.style.width=p+'%';lbl.textContent=p+'% সম্পন্ন';});
+    const url=await uploadToStorage(file,'profile/avatar_'+Date.now()+'.'+file.name.split('.').pop(),p=>{fill.style.width=p+'%';lbl.textContent=p+'% সম্পন্ন';});
     await db.ref('profile').update({avatar:url});
     lbl.textContent='আপলোড সম্পন্ন ✅';
     toast('প্রোফাইল ছবি আপলোড সফল ✅','success');
@@ -770,7 +948,6 @@ async function previewAndUploadAvatar(input){
 async function previewAndUploadCover(input){
   const file=input.files[0]; if(!file)return;
   if(file.size>8*1024*1024){toast('ছবির আকার ৮ MB-এর বেশি হওয়া যাবে না','error');return;}
-  // preview
   const reader=new FileReader();
   reader.onload=e=>{
     const prev=document.getElementById('cover-modal-preview');
@@ -778,19 +955,104 @@ async function previewAndUploadCover(input){
     prev.src=e.target.result;prev.classList.add('show');inner.style.display='none';
   };
   reader.readAsDataURL(file);
-  // upload
   const prog=document.getElementById('cover-upload-progress');
   const fill=document.getElementById('cover-up-fill');
   const lbl=document.getElementById('cover-up-label');
   prog.classList.add('active');fill.style.width='0%';lbl.textContent='আপলোড হচ্ছে...';
   try{
-    const url=await uploadToStorage(file,'profile/cover_'+Date.now()+'.'+file.name.split('.').pop(), p=>{fill.style.width=p+'%';lbl.textContent=p+'% সম্পন্ন';});
+    const url=await uploadToStorage(file,'profile/cover_'+Date.now()+'.'+file.name.split('.').pop(),p=>{fill.style.width=p+'%';lbl.textContent=p+'% সম্পন্ন';});
     await db.ref('profile').update({cover:url});
     lbl.textContent='আপলোড সম্পন্ন ✅';
     toast('কভার ফটো আপলোড সফল ✅','success');
     setTimeout(()=>{prog.classList.remove('active');fill.style.width='0%';},1500);
   }catch(e){lbl.textContent='ব্যর্থ হয়েছে ❌';toast('আপলোড ব্যর্থ: '+e.message,'error');setTimeout(()=>prog.classList.remove('active'),1500);}
   input.value='';
+}
+
+/* ══════════════ USERNAME ══════════════ */
+function openUsernameModal(){
+  if(!isAdmin){toast('প্রথমে লগইন করুন');openLoginModal();return;}
+  const inp=document.getElementById('username-input');
+  inp.value=_pd.username||'';
+  previewUsername(inp.value);
+  openModal('username-modal');
+}
+
+function previewUsername(val){
+  const clean=val.toLowerCase().replace(/[^a-z0-9_]/g,'');
+  const inp=document.getElementById('username-input');
+  inp.value=clean;
+  const base=window.location.origin+window.location.pathname.split('/').slice(0,-1).join('/');
+  document.getElementById('username-preview-url').innerHTML=`প্রোফাইল URL: <b>${base}?u=${clean||'username'}</b>`;
+  const chk=document.getElementById('username-check');
+  if(!clean){chk.style.display='none';return;}
+  if(clean.length<3){chk.className='username-check err';chk.innerHTML='<i class="fa-solid fa-xmark"></i> কমপক্ষে ৩ অক্ষর দিন';chk.style.display='flex';return;}
+  chk.className='username-check ok';chk.innerHTML='<i class="fa-solid fa-check"></i> ভালো দেখাচ্ছে!';chk.style.display='flex';
+}
+
+async function saveUsername(){
+  if(!isAdmin)return;
+  const val=document.getElementById('username-input').value.trim();
+  if(!val||val.length<3){toast('কমপক্ষে ৩ অক্ষরের username দিন');return;}
+  if(!/^[a-z0-9_]{3,20}$/.test(val)){toast('শুধু a-z, 0-9 এবং _ ব্যবহার করুন');return;}
+  try{
+    await db.ref('profile').update({username:val});
+    _username=val;
+    closeModal('username-modal');
+    toast('Username সেট হয়েছে: @'+val,'success');
+    document.getElementById('username-prompt').style.display='none';
+    updateHeaderUsername(val);
+  }catch(e){toast('এরর: '+e.message,'error');}
+}
+
+function updateHeaderUsername(u){
+  const el=document.getElementById('header-username');
+  if(u){el.textContent='@'+u;el.classList.add('show');}
+  else el.classList.remove('show');
+}
+
+/* ══════════════ SHARE ══════════════ */
+let _qrGenerated=false;
+function openShareModal(){
+  const username=_pd.username||'';
+  const base=window.location.origin+(window.location.pathname.endsWith('/')?window.location.pathname:window.location.pathname+'/');
+  const url=username?`${window.location.origin}${window.location.pathname}?u=${username}`:`${window.location.origin}${window.location.pathname}`;
+  const shareUrl=url.replace(/\/index\.html/,'');
+  
+  document.getElementById('share-url-input').value=shareUrl;
+  
+  // Social share links
+  const name=_pd.name||'Ibrahim Khalil';
+  const text=`${name} এর DevCard দেখুন!`;
+  document.getElementById('share-fb').href=`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
+  document.getElementById('share-wa').href=`https://wa.me/?text=${encodeURIComponent(text+' '+shareUrl)}`;
+  document.getElementById('share-tw').href=`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`;
+  
+  // Generate QR Code
+  const qrEl=document.getElementById('qr-code');
+  qrEl.innerHTML='';
+  _qrGenerated=false;
+  setTimeout(()=>{
+    if(!_qrGenerated){
+      try{
+        new QRCode(qrEl,{text:shareUrl,width:180,height:180,colorDark:'#1877f2',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.H});
+        _qrGenerated=true;
+      }catch(e){qrEl.innerHTML='<p style="font-size:.7rem;color:var(--text2);">QR কোড লোড হচ্ছে...</p>';}
+    }
+  },100);
+  
+  openModal('share-modal');
+}
+
+function copyProfileUrl(){
+  const val=document.getElementById('share-url-input').value;
+  if(navigator.clipboard){navigator.clipboard.writeText(val).then(()=>toast('URL কপি হয়েছে ✅','success')).catch(()=>fallbackCopy(val));}
+  else{fallbackCopy(val);}
+}
+function fallbackCopy(text){
+  const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');toast('URL কপি হয়েছে ✅','success');}catch(e){toast('কপি করতে পারিনি','error');}
+  document.body.removeChild(ta);
 }
 
 /* ══════════════ PROFILE DATA ══════════════ */
@@ -800,20 +1062,36 @@ profileRef.on('value',snap=>{
   const name=d.name||'Ibrahim Khalil';
   document.getElementById('pf-name-el').innerHTML=escH(name)+' <span class="verified"><i class="fa-solid fa-circle-check"></i></span>';
   document.getElementById('cover-name').textContent=name;
-  document.getElementById('pf-role-el').textContent=d.role||'Digital Creator';
+  document.getElementById('pf-role-el') && (document.getElementById('pf-role-el').textContent=d.role||'Digital Creator');
   document.getElementById('cover-role').textContent=d.role||'Digital Creator';
   document.getElementById('pf-bio-el').textContent=d.bio||'Time is relative, but one-way.';
-  document.getElementById('vibe-text').textContent=d.vibe||'আপনার vibe এখানে থাকবে...';
+  document.getElementById('vibe-text').textContent=d.vibe||'Current vibe...';
   document.getElementById('vibe-input').value=d.vibe||'';
   document.getElementById('st-followers').textContent=fmtNum(d.followers||951);
   document.getElementById('st-following').textContent=fmtNum(d.following||6);
   document.getElementById('st-posts').textContent=fmtNum(d.posts||107);
+  document.getElementById('pf-views-el').textContent=fmtNum(d.views||0);
+
+  // Role type tag
+  const roleTypeEl=document.getElementById('pf-role-type');
+  if(roleTypeEl)roleTypeEl.textContent=d.role||'Digital creator';
+
+  // Username
+  _username=d.username||'';
+  updateHeaderUsername(_username);
+  const usernameEl=document.getElementById('pf-username-el');
+  if(usernameEl){
+    usernameEl.textContent=_username?'@'+_username:'';
+    usernameEl.style.display=_username?'block':'none';
+  }
+  if(isAdmin){
+    document.getElementById('username-prompt').style.display=_username?'none':'flex';
+  }
 
   // Avatar
   const av=document.getElementById('av-display');
   if(d.avatar){av.innerHTML=`<img class="av-img" src="${escH(d.avatar)}" alt="avatar">`;}
   else{av.innerHTML=`<div class="av-icon"><i class="fa-solid fa-user"></i></div>`;}
-  // Update modal avatar preview too
   const ac=document.getElementById('av-preview-circle');
   if(d.avatar)ac.innerHTML=`<img src="${escH(d.avatar)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="av">`;
   else ac.innerHTML=`<i class="fa-solid fa-user"></i>`;
@@ -822,23 +1100,24 @@ profileRef.on('value',snap=>{
   const cw=document.getElementById('cover-wrap');
   const oldImg=cw.querySelector('.cover-img');if(oldImg)oldImg.remove();
   if(d.cover){const img=document.createElement('img');img.className='cover-img';img.src=d.cover;cw.prepend(img);}
-  // Update modal cover preview
   if(d.cover){
     const cp=document.getElementById('cover-modal-preview');const ci=document.getElementById('cover-upload-inner');
     cp.src=d.cover;cp.classList.add('show');ci.style.display='none';
   }
 
-  // Meta
+  // Meta info (Facebook style chips)
   let m='';
-  const metaItems=[
-    {i:'fa-solid fa-briefcase',v:d.role,l:null},
-    {i:'fa-solid fa-location-dot',v:d.location,l:null},
-    {i:'fa-solid fa-school',v:d.school,l:null},
-    {i:'fa-solid fa-graduation-cap',v:d.college,l:null},
-    {i:'fa-solid fa-envelope',v:d.email,l:'mailto:'+d.email},
-  ];
-  metaItems.forEach(x=>{if(!x.v)return;m+=`<div class="pf-meta-item"><i class="${x.i}"></i>${x.l?`<a href="${escH(x.l)}" target="_blank">${escH(x.v)}</a>`:escH(x.v)}</div>`;});
+  if(d.role)m+=`<div class="pf-meta-item"><i class="fa-solid fa-briefcase"></i>${escH(d.role)}</div>`;
+  if(d.location)m+=`<div class="pf-meta-item"><i class="fa-solid fa-location-dot"></i>${escH(d.location)}</div>`;
+  if(d.school)m+=`<div class="pf-meta-item"><i class="fa-solid fa-school"></i>${escH(d.school)}</div>`;
+  if(d.college)m+=`<div class="pf-meta-item"><i class="fa-solid fa-graduation-cap"></i>${escH(d.college)}</div>`;
   document.getElementById('pf-meta').innerHTML=m;
+
+  // Instagram handle display
+  const igH=document.getElementById('pf-ig-handle');
+  const igT=document.getElementById('pf-ig-text');
+  if(d.instagram){igH.style.display='flex';igT.textContent=d.instagram;}
+  else igH.style.display='none';
 
   // Socials
   const soc=[];
@@ -850,6 +1129,9 @@ profileRef.on('value',snap=>{
   if(d.website)soc.push({i:'fa-solid fa-globe',u:d.website,l:'Website'});
   if(d.email)soc.push({i:'fa-solid fa-envelope',u:'mailto:'+d.email,l:'Email'});
   document.getElementById('pf-socials').innerHTML=soc.map(x=>`<a class="pf-soc-link" href="${escH(x.u)}" target="_blank" rel="noopener"><i class="${x.i}"></i>${x.l}</a>`).join('');
+
+  // Update page title
+  document.title=`DevCard — ${name}`;
 });
 
 function openProfileModal(){
@@ -857,7 +1139,7 @@ function openProfileModal(){
   const d=_pd;
   const map={name:'pf-name',role:'pf-role',bio:'pf-bio',location:'pf-location',school:'pf-school',college:'pf-college',email:'pf-email',instagram:'pf-instagram',facebook:'pf-facebook',github:'pf-github',youtube:'pf-youtube',linkedin:'pf-linkedin',website:'pf-website',followers:'pf-followers',following:'pf-following',posts:'pf-posts'};
   Object.entries(map).forEach(([k,id])=>{const el=document.getElementById(id);if(el)el.value=d[k]||'';});
-  switchTab('tab-photos');
+  switchTab('tab-basic');
   openModal('profile-modal');
 }
 
@@ -867,9 +1149,12 @@ function saveProfile(){
   const data={};
   strFields.forEach(k=>{const el=document.getElementById('pf-'+k);if(el)data[k]=el.value.trim();});
   numFields.forEach(k=>{const el=document.getElementById('pf-'+k);if(el)data[k]=parseInt(el.value)||0;});
+  // Preserve existing fields
   if(_pd.vibe)data.vibe=_pd.vibe;
   if(_pd.avatar)data.avatar=_pd.avatar;
   if(_pd.cover)data.cover=_pd.cover;
+  if(_pd.username)data.username=_pd.username;
+  if(_pd.views)data.views=_pd.views;
   profileRef.set(data)
     .then(()=>{closeModal('profile-modal');toast('প্রোফাইল সেভ হয়েছে ✅','success');})
     .catch(e=>toast('এরর: '+e.message,'error'));
@@ -924,12 +1209,9 @@ function editExp(k){if(!isAdmin)return;const e=_ec[k];if(!e)return;document.getE
 function saveExp(){const id=document.getElementById('ex-id').value,data={role:document.getElementById('ex-role').value.trim(),org:document.getElementById('ex-org').value.trim(),date:document.getElementById('ex-date').value.trim(),desc:document.getElementById('ex-desc').value.trim()};if(!data.role){toast('পদবি দিন');return;}const ref=id?expRef.child(id):expRef.push();ref.set(data).then(()=>{closeModal('exp-modal');toast('সেভ হয়েছে ✅','success');}).catch(e=>toast('এরর: '+e.message,'error'));}
 function delExp(k){if(!confirm('ডিলিট করবেন?'))return;expRef.child(k).remove().then(()=>toast('ডিলিট হয়েছে'));}
 
-/* ══════════════ CONTACT ══════════════ */
-function sendMessage(){const n=document.getElementById('msg-name').value.trim(),e=document.getElementById('msg-email').value.trim(),t=document.getElementById('msg-text').value.trim();if(!n||!e||!t){toast('সব ফিল্ড পূরণ করুন');return;}db.ref('messages').push({name:n,email:e,text:t,time:new Date().toISOString()}).then(()=>{toast('মেসেজ পাঠানো হয়েছে ✅','success');['msg-name','msg-email','msg-text'].forEach(id=>document.getElementById(id).value='');}).catch(e=>toast('এরর: '+e.message,'error'));}
-
 /* ══════════════ UTILS ══════════════ */
 function escH(s){if(!s)return'';return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
-function fmtNum(n){if(n>=1000)return(n/1000).toFixed(1).replace(/\.0$/,'')+'K';return String(n);}
+function fmtNum(n){if(!n)return'0';n=Number(n);if(n>=1000000)return(n/1000000).toFixed(1).replace(/\.0$/,'')+'M';if(n>=1000)return(n/1000).toFixed(1).replace(/\.0$/,'')+'K';return String(n);}
 </script>
 </body>
 </html>
