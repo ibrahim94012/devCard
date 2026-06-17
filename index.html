@@ -478,6 +478,11 @@ section{margin-bottom:10px;background:var(--panel);padding:1.2rem 1rem;
 ::-webkit-scrollbar{width:4px;}
 ::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:10px;}
 </style>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -1086,12 +1091,16 @@ section{margin-bottom:10px;background:var(--panel);padding:1.2rem 1rem;
   </div>
 </div>
 
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+
 <script>
+/* ── Safe init wrapper ── */
+window._fbReady = false;
+
+function _safeInit() {
+try {
+/* ── Safe DOM helper ── */
+function safeGet(id){ return document.getElementById(id)||{textContent:'',innerHTML:'',style:{},classList:{add:function(){},remove:function(){},toggle:function(){}},value:''}; }
+
 /* ── Firebase Init ── */
 const fbCfg={
   apiKey:"AIzaSyA_vr4EXR57ap2CRxlS1JpK6wHqIwlU8Rc",
@@ -1858,6 +1867,70 @@ function fmtNum(n){
   if(n>=1e6) return(n/1e6).toFixed(1).replace(/\.0$/,'')+'M';
   if(n>=1e3) return(n/1e3).toFixed(1).replace(/\.0$/,'')+'K';
   return String(n);
+}
+
+// Export all functions to window for inline onclick handlers
+window.openLoginModal=openLoginModal;
+window.openShareModal=openShareModal;
+window.openProfileModal=openProfileModal;
+window.openExpModal=openExpModal;
+window.openSkillModal=openSkillModal;
+window.openProjectModal=openProjectModal;
+window.openUsernameModal=openUsernameModal;
+window.googleLogin=googleLogin;
+window.emailLogin=emailLogin;
+window.doLogout=doLogout;
+window.saveProfile=saveProfile;
+window.saveVibe=saveVibe;
+window.saveExp=saveExp;
+window.saveProject=saveProject;
+window.saveUsername=saveUsername;
+window.addSkill=addSkill;
+window.delSkill=delSkill;
+window.editExp=editExp;
+window.delExp=delExp;
+window.editProject=editProject;
+window.delProject=delProject;
+window.copyProfileUrl=copyProfileUrl;
+window.handleLike=handleLike;
+window.handleDislike=handleDislike;
+window.closeModal=closeModal;
+window.openModal=openModal;
+window.switchTab=switchTab;
+window.previewUsername=previewUsername;
+window.handleAvatarUpload=handleAvatarUpload;
+window.handleCoverUpload=handleCoverUpload;
+window.modalAvatarUpload=modalAvatarUpload;
+window.modalCoverUpload=modalCoverUpload;
+
+window._fbReady = true;
+
+} catch(e) {
+  console.error('Firebase init error:', e);
+  // Fallback stubs so onclick handlers don't crash with ReferenceError
+  ['openLoginModal','openShareModal','openProfileModal','openExpModal',
+   'openSkillModal','openProjectModal','openUsernameModal','googleLogin',
+   'emailLogin','doLogout','saveProfile','saveVibe','saveExp','saveProject',
+   'saveUsername','addSkill','copyProfileUrl','handleLike','handleDislike'
+  ].forEach(function(fn){
+    if(typeof window[fn]==='undefined'){
+      window[fn]=function(){ alert('Firebase লোড হয়নি। পেজ রিফ্রেশ করুন।'); };
+    }
+  });
+  // Show error toast if toast function is available
+  var toastEl=document.getElementById('toast');
+  if(toastEl){
+    toastEl.textContent='Firebase কানেকশন ব্যর্থ। পেজ রিফ্রেশ করুন।';
+    toastEl.className='toast show error';
+  }
+}
+}
+
+// Run after DOM is ready
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded', _safeInit);
+} else {
+  _safeInit();
 }
 </script>
 </body>
