@@ -1529,7 +1529,7 @@ function fallbackCopy(text){
   ta.value=text; ta.style.cssText='position:fixed;left:-9999px;top:-9999px';
   document.body.appendChild(ta); ta.select();
   try{ document.execCommand('copy'); toast('URL কপি হয়েছে ✅','success'); }
-  catch(){ toast('কপি করা যায়নি','error'); }
+  catch(_e){ toast('কপি করা যায়নি','error'); }
   document.body.removeChild(ta);
 }
 
